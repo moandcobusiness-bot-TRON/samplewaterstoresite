@@ -184,3 +184,206 @@
     window.location.href = `mailto:goodwater@thewaterstoremilton.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   });
 })();
+
+// Interactive hero water: device tilt/shake, drag, tap and touch bubbles
+(() => {
+  const hero = document.querySelector('.hero');
+  const wrap = document.getElementById('jugWrap');
+  const tiltG = document.getElementById('jugTilt');
+  const levelG = document.getElementById('jugLevel');
+  const splashEl = document.getElementById('splash');
+  const bubbles = document.querySelector('.hero__bubbles');
+  const hint = document.getElementById('tiltHint');
+  const hintText = document.getElementById('tiltHintText');
+  if (!hero || !wrap || !tiltG) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { hint.classList.add('is-hidden'); return; }
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
+  const needsPermission = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+
+  // Physics state
+  let waterA = 0, waterV = 0;      // water surface angle relative to jug (deg) + velocity
+  let level = 0, levelV = 0;       // vertical slosh offset
+  let jugA = 0;                    // displayed jug rotation
+  let dragTilt = 0, hoverTilt = 0, deviceTilt = 0, deviceRaw = 0;
+  let dragging = false, deviceActive = false, running = true, interacted = false;
+
+  const setHint = (txt) => { hintText.textContent = txt; };
+  if (needsPermission) setHint('Tap here, then tilt your phone');
+  else if (isTouch) setHint('Tilt your phone or drag the jug');
+
+  function markInteracted() {
+    if (interacted) return;
+    interacted = true;
+    setTimeout(() => hint.classList.add('is-hidden'), 2500);
+  }
+
+  // Splash droplets out of the jug mouth
+  function splash(power = 1) {
+    const n = Math.round(6 + power * 6);
+    for (let i = 0; i < n; i++) {
+      const d = document.createElement('span');
+      d.className = 'drop';
+      const dir = (Math.random() - .5) * 2 + clamp(-waterA / 25, -1, 1);
+      d.style.setProperty('--dx', dir * (40 + Math.random() * 60 * power) + 'px');
+      d.style.setProperty('--dy', -(40 + Math.random() * 70 * power) + 'px');
+      d.style.setProperty('--s', 6 + Math.random() * 9 + 'px');
+      d.style.animationDelay = Math.random() * 80 + 'ms';
+      splashEl.appendChild(d);
+      setTimeout(() => d.remove(), 1100);
+    }
+    levelV -= 4 * power;
+    waterV += (Math.random() - .5) * 10 * power;
+  }
+
+  // Bubbles + ripple under the finger / cursor anywhere in the hero
+  let lastBubble = 0;
+  function bubbleAt(e, force) {
+    const now = performance.now();
+    if (!force && now - lastBubble < 70) return;
+    lastBubble = now;
+    const r = hero.getBoundingClientRect();
+    const b = document.createElement('span');
+    const size = 8 + Math.random() * 18;
+    b.className = 'bubble bubble--touch';
+    b.style.width = b.style.height = size + 'px';
+    b.style.left = e.clientX - r.left + 'px';
+    b.style.top = e.clientY - r.top + 'px';
+    b.style.setProperty('--drift', (Math.random() * 60 - 30) + 'px');
+    bubbles.appendChild(b);
+    setTimeout(() => b.remove(), 1700);
+  }
+  function rippleAt(e) {
+    const r = hero.getBoundingClientRect();
+    const rp = document.createElement('span');
+    rp.className = 'ripple';
+    rp.style.left = e.clientX - r.left + 'px';
+    rp.style.top = e.clientY - r.top + 'px';
+    bubbles.appendChild(rp);
+    setTimeout(() => rp.remove(), 950);
+  }
+
+  hero.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'mouse' && !dragging) {
+      const r = hero.getBoundingClientRect();
+      hoverTilt = ((e.clientX - r.left) / r.width - .5) * 18;
+    }
+    if (e.pointerType !== 'mouse' || Math.random() < .5) bubbleAt(e);
+  }, { passive: true });
+  hero.addEventListener('pointerleave', () => { hoverTilt = 0; });
+  hero.addEventListener('pointerdown', (e) => {
+    rippleAt(e);
+    for (let i = 0; i < 4; i++) bubbleAt(e, true);
+    if (needsPermission && !deviceActive) requestMotion();
+  });
+
+  // Drag the jug to tilt it; quick tap = splash
+  let startX = 0, lastX = 0, lastT = 0, downT = 0, moved = 0;
+  wrap.addEventListener('pointerdown', (e) => {
+    dragging = true; moved = 0;
+    startX = lastX = e.clientX; lastT = downT = performance.now();
+    wrap.classList.add('is-dragging');
+    wrap.setPointerCapture(e.pointerId);
+    markInteracted();
+  });
+  wrap.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const now = performance.now();
+    const dx = e.clientX - startX;
+    moved = Math.max(moved, Math.abs(dx));
+    dragTilt = clamp(dx / 3.5, -32, 32);
+    const vx = (e.clientX - lastX) / Math.max(now - lastT, 1);
+    waterV -= vx * 1.2;
+    if (Math.abs(vx) > 2.2) splash(.5);
+    lastX = e.clientX; lastT = now;
+  });
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    wrap.classList.remove('is-dragging');
+    if (moved < 6 && performance.now() - downT < 300) splash(1);
+    else waterV += dragTilt * .35; // let it slosh back
+    dragTilt = 0;
+  };
+  wrap.addEventListener('pointerup', endDrag);
+  wrap.addEventListener('pointercancel', endDrag);
+
+  // Device orientation + shake
+  function screenAngle() {
+    return (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+  }
+  function onOrient(e) {
+    if (e.gamma == null) return;
+    const ang = ((screenAngle() % 360) + 360) % 360;
+    let t = e.gamma;
+    if (ang === 90) t = e.beta; else if (ang === 270) t = -e.beta; else if (ang === 180) t = -e.gamma;
+    deviceRaw = clamp(t, -40, 40);
+    if (!deviceActive) {
+      deviceActive = true;
+      setHint('Tilt or shake your phone');
+      markInteracted();
+    }
+  }
+  let lastShake = 0;
+  function onMotion(e) {
+    const a = e.acceleration || {};
+    const ax = a.x || 0, ay = a.y || 0;
+    waterV += clamp(ax, -12, 12) * .45;
+    levelV += clamp(ay, -12, 12) * .12;
+    const mag = Math.hypot(ax, ay, a.z || 0);
+    const now = performance.now();
+    if (mag > 13 && now - lastShake > 350) { lastShake = now; splash(clamp(mag / 20, .6, 1.6)); }
+  }
+  function listenMotion() {
+    window.addEventListener('deviceorientation', onOrient);
+    window.addEventListener('devicemotion', onMotion);
+  }
+  function requestMotion() {
+    const asks = [DeviceOrientationEvent.requestPermission()];
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') asks.push(DeviceMotionEvent.requestPermission());
+    Promise.all(asks).then(r => {
+      if (r[0] === 'granted') listenMotion();
+      else setHint('Drag the jug to make waves');
+    }).catch(() => setHint('Drag the jug to make waves'));
+  }
+  if (!needsPermission && 'DeviceOrientationEvent' in window) listenMotion();
+
+  hint.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (needsPermission && !deviceActive) requestMotion();
+    else splash(1.2);
+    markInteracted();
+  });
+
+  // Animation loop (paused while the hero is off screen)
+  let t0 = performance.now();
+  function frame(now) {
+    if (!running) return;
+    const dt = Math.min((now - t0) / 16.67, 3); t0 = now;
+    deviceTilt += (deviceRaw - deviceTilt) * .2 * dt;
+    const jugTarget = dragging ? dragTilt : (deviceActive ? 0 : hoverTilt);
+    jugA += (jugTarget - jugA) * .18 * dt;
+    // Gravity keeps the surface level in the world: counter-rotate the jug and the phone
+    const target = clamp(-(jugA + deviceTilt), -38, 38);
+    waterV += (target - waterA) * .05 * dt;
+    waterV *= Math.pow(.93, dt);
+    waterA += waterV * dt;
+    levelV += -level * .08 * dt;
+    levelV *= Math.pow(.9, dt);
+    level += levelV * dt;
+    wrap.style.transform = `rotate(${jugA.toFixed(2)}deg)`;
+    tiltG.setAttribute('transform', `rotate(${waterA.toFixed(2)} 160 175)`);
+    levelG.setAttribute('transform', `translate(0 ${clamp(level, -30, 30).toFixed(2)})`);
+    bubbles.style.transform = `translateX(${(-deviceTilt * 1.5).toFixed(1)}px)`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([en]) => {
+      const vis = en.isIntersecting;
+      if (vis && !running) { running = true; t0 = performance.now(); requestAnimationFrame(frame); }
+      running = vis;
+    }).observe(hero);
+  }
+})();
