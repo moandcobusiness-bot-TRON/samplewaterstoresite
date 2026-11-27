@@ -1051,25 +1051,27 @@
   apply();
 })();
 
-// Free water test booking form (4 steps, then sends by email)
+
+// Free water test booking form (one page, live summary, sends by email)
 (() => {
   const form = document.getElementById('bookForm');
   if (!form) return;
   const book = document.getElementById('book');
-  const steps = [...form.querySelectorAll('.book__step')];
-  const progress = [...book.querySelectorAll('.book__progress li')];
-  const nextBtn = document.getElementById('bookNext');
-  const backBtn = document.getElementById('bookBack');
-  const countEl = document.getElementById('bookCount');
-  const nav = document.getElementById('bookNav');
-  const review = document.getElementById('bookReview');
+  const done = document.getElementById('bookDone');
   const datesEl = document.getElementById('bookDates');
   const timesEl = document.getElementById('bookTimes');
   const timeNote = document.getElementById('bookTimeNote');
+  const otherWrap = document.getElementById('dateOtherWrap');
   const otherDate = document.getElementById('bookDateOther');
+  const sumList = document.getElementById('bookSumList');
+  const bar = document.getElementById('bookBar');
+  const progressEl = document.getElementById('bookProgress');
+  const noteToggle = document.getElementById('noteToggle');
+  const noteField = document.getElementById('noteField');
+  const sec = (k) => form.querySelector(`.bsec[data-sec="${k}"]`);
   const STORE = 'goodwater@thewaterstoremilton.com';
   const DRAFT = 'tws-booking-draft';
-  let step = 1;
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   const DAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1084,33 +1086,41 @@
     return [{ v: 'morning', t: 'Morning', s: '9 a.m. – 12 p.m.' }, { v: 'afternoon', t: 'Afternoon', s: '12 – 4 p.m.' }, { v: 'evening', t: 'Evening', s: '4 – 8 p.m.' }];
   }
 
-  // Next 7 days as quick picks (starting tomorrow), plus a free date input
+  // Date strip: next 7 days + "Other date"
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const quick = [];
   for (let i = 1; i <= 7; i++) { const d = new Date(today); d.setDate(d.getDate() + i); quick.push(d); }
-  datesEl.innerHTML = quick.map(d => `<label class="pick date-pick"><input type="radio" name="date" value="${iso(d)}"><span><small>${DAY[d.getDay()].slice(0, 3)}</small><b>${d.getDate()}</b><em>${MON[d.getMonth()]}</em></span></label>`).join('');
+  datesEl.innerHTML = quick.map((d, i) => `<label class="date"><input type="radio" name="date" value="${iso(d)}"><span><small>${i === 0 ? 'Tmrw' : DAY[d.getDay()].slice(0, 3)}</small><b>${d.getDate()}</b><em>${MON[d.getMonth()]}</em></span></label>`).join('')
+    + '<label class="date date--other"><input type="radio" name="date" value="other"><span><small>Later</small><b>Other date</b></span></label>';
   const minD = new Date(today); minD.setDate(minD.getDate() + 1);
   const maxD = new Date(today); maxD.setDate(maxD.getDate() + 60);
   otherDate.min = iso(minD); otherDate.max = iso(maxD);
 
-  const chosenDate = () => { const r = form.querySelector('input[name="date"]:checked'); return r ? r.value : (otherDate.value || ''); };
+  const chosenDate = () => {
+    const r = form.querySelector('input[name="date"]:checked');
+    if (!r) return '';
+    return r.value === 'other' ? (otherDate.value || '') : r.value;
+  };
   function renderTimes() {
     const d = chosenDate();
     const prev = (form.querySelector('input[name="time"]:checked') || {}).value;
     const wins = d ? windowsFor(fromIso(d).getDay()) : windowsFor(1);
-    timesEl.innerHTML = wins.map(w => `<label class="pick time-pick"><input type="radio" name="time" value="${w.v}" ${d ? '' : 'disabled'} ${prev === w.v ? 'checked' : ''}><span><b>${w.t}</b><small>${w.s}</small></span></label>`).join('');
-    timeNote.textContent = d ? (fromIso(d).getDay() === 0 ? 'Sundays we’re open 11 a.m. – 4 p.m.' : '') : 'Pick a date first.';
+    timesEl.innerHTML = wins.map(w => `<label class="chip"><input type="radio" name="time" value="${w.v}" ${d ? '' : 'disabled'} ${prev === w.v || (d && wins.length === 1) ? 'checked' : ''}><span><b>${w.t}</b><small>${w.s}</small></span></label>`).join('');
+    timeNote.textContent = !d ? 'Pick a day to see times.' : fromIso(d).getDay() === 0 ? 'Sundays we’re open 11 a.m. – 4 p.m.' : '';
   }
-  datesEl.addEventListener('change', () => { otherDate.value = ''; renderTimes(); save(); });
+  datesEl.addEventListener('change', () => {
+    const isOther = (form.querySelector('input[name="date"]:checked') || {}).value === 'other';
+    otherWrap.hidden = !isOther;
+    if (isOther) { otherDate.focus(); if (otherDate.showPicker) { try { otherDate.showPicker(); } catch (e) {} } }
+    else otherDate.value = '';
+    renderTimes();
+  });
   otherDate.addEventListener('change', () => {
-    if (otherDate.value) {
-      if (otherDate.value < otherDate.min || otherDate.value > otherDate.max) otherDate.value = '';
-      form.querySelectorAll('input[name="date"]').forEach(r => { r.checked = r.value === otherDate.value; });
-    }
-    renderTimes(); save();
+    if (otherDate.value && (otherDate.value < otherDate.min || otherDate.value > otherDate.max)) otherDate.value = '';
+    renderTimes();
   });
 
-  // Store drop-off doesn't need an address
+  // Location changes the copy and whether we need an address
   function syncWhere() {
     const where = form.where.value;
     const atStore = where === 'store';
@@ -1119,86 +1129,79 @@
     document.getElementById('whenLegend').textContent = atStore ? 'When will you drop off your sample?' : 'When works for you?';
     form.address.placeholder = where === 'cottage' ? 'Cottage address or directions' : 'Street address';
   }
-  form.addEventListener('change', (e) => { if (e.target.name === 'where') syncWhere(); });
 
   // "Not sure" and specific concerns are mutually exclusive
   form.addEventListener('change', (e) => {
+    if (e.target.name === 'where') syncWhere();
     if (e.target.name !== 'concern') return;
     const boxes = [...form.querySelectorAll('input[name="concern"]')];
     if (e.target.value === 'unsure' && e.target.checked) boxes.forEach(b => { if (b !== e.target) b.checked = false; });
     else if (e.target.checked) boxes.find(b => b.value === 'unsure').checked = false;
-    form.querySelector('[data-error="2"]').hidden = true;
   });
 
-  // Validation per step
+  noteToggle.addEventListener('click', () => {
+    const open = noteField.hidden;
+    noteField.hidden = !open;
+    noteToggle.setAttribute('aria-expanded', String(open));
+    noteToggle.textContent = open ? '− Hide note' : '+ Add a note';
+    if (open) form.notes.focus();
+  });
+
+  // Section completeness + validation
   const digits = (s) => (s || '').replace(/\D/g, '');
-  function invalid(field, bad) { field.closest('.field').classList.toggle('is-invalid', bad); field.setAttribute('aria-invalid', String(bad)); return bad; }
-  function validate(n) {
-    const err = form.querySelector(`[data-error="${n}"]`);
-    let ok = true, first = null;
-    if (n === 2) ok = !!form.querySelector('input[name="concern"]:checked');
-    if (n === 3) ok = !!chosenDate() && !!form.querySelector('input[name="time"]:checked');
-    if (n === 4) {
-      const atStore = form.where.value === 'store';
-      const checks = [
-        [form.name, !form.name.value.trim()],
-        [form.phone, digits(form.phone.value).length < 10],
-        [form.email, (form.email.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.value)) || (form.contact.value === 'email' && !form.email.value)],
-        [form.address, !atStore && !form.address.value.trim()]
-      ];
-      checks.forEach(([f, bad]) => { if (invalid(f, bad) && !first) first = f; });
-      ok = !first;
-      if (err) err.textContent = form.contact.value === 'email' && !form.email.value ? 'Add your email, since that’s how you’d like us to reach you.' : 'Please fill in the highlighted fields.';
-    }
-    if (err) err.hidden = ok;
-    if (!ok) (first || err).focus?.();
-    return ok;
+  const emailOk = (v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  function youProblems() {
+    const atStore = form.where.value === 'store';
+    return [
+      [form.name, !form.name.value.trim()],
+      [form.phone, digits(form.phone.value).length < 10],
+      [form.email, !emailOk(form.email.value) || (form.contact.value === 'email' && !form.email.value)],
+      [form.address, !atStore && !form.address.value.trim()]
+    ];
   }
-  form.addEventListener('input', (e) => { const f = e.target.closest('.field'); if (f && f.classList.contains('is-invalid')) invalid(e.target, false); });
-  // clear a step's error once the visitor fixes it
-  form.addEventListener('change', () => {
-    const err = form.querySelector(`[data-error="${step}"]`);
-    if (!err || err.hidden) return;
-    if (step === 3 && chosenDate() && form.querySelector('input[name="time"]:checked')) err.hidden = true;
+  const status = () => ({
+    where: true,
+    concerns: !!form.querySelector('input[name="concern"]:checked'),
+    when: !!chosenDate() && !!form.querySelector('input[name="time"]:checked'),
+    you: youProblems().every(([, bad]) => !bad)
   });
-  form.addEventListener('input', () => {
-    const err = form.querySelector('[data-error="4"]');
-    if (step === 4 && !err.hidden && !form.querySelector('.field.is-invalid')) err.hidden = true;
-  });
+  function markField(f, bad) { f.closest('.field').classList.toggle('is-invalid', bad); f.setAttribute('aria-invalid', String(bad)); }
 
-  function show(n, initial) {
-    step = n;
-    steps.forEach(s => s.classList.toggle('is-active', +s.dataset.step === n));
-    progress.forEach(li => { const k = +li.dataset.for; li.classList.toggle('is-on', k === n); li.classList.toggle('is-done', k < n || n === 5); });
-    review.hidden = n !== 5;
-    nav.hidden = n === 5;
-    backBtn.hidden = n === 1;
-    nextBtn.textContent = n === 4 ? 'Review request →' : 'Next →';
-    countEl.textContent = `Step ${n} of 4`;
-    if (initial) return;
-    const top = book.getBoundingClientRect().top;
-    if (top < 0 || top > window.innerHeight * .6) book.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const active = n === 5 ? review : steps[n - 1];
-    const focusTarget = n === 5 ? review : active.querySelector('input, textarea, select');
-    if (focusTarget) setTimeout(() => focusTarget.focus({ preventScroll: true }), 50);
+  // Live summary
+  const label = (input) => { const sp = input.closest('label').querySelector('span').cloneNode(true); sp.querySelectorAll('i,small').forEach(n => n.remove()); return sp.textContent.trim(); };
+  function summary() {
+    const st = status();
+    const where = { home: 'In-home test', cottage: 'Cottage visit', store: 'Bringing a sample to the store' }[form.where.value];
+    const src = { city: 'city water', well: 'private well', unsure: 'source not sure' }[form.source.value];
+    const concerns = [...form.querySelectorAll('input[name="concern"]:checked')].map(label);
+    const d = chosenDate(), t = form.querySelector('input[name="time"]:checked');
+    const win = d && t ? windowsFor(fromIso(d).getDay()).find(w => w.v === t.value) : null;
+    const who = [form.name.value.trim(), form.phone.value.trim()].filter(Boolean).join(' · ');
+    const items = [
+      ['where', 'Visit', `${where}, ${src}`],
+      ['concerns', 'Concerns', concerns.length ? concerns.join(', ') : 'Pick what’s bothering you'],
+      ['when', 'When', win ? `${pretty(d)}, ${win.t.toLowerCase()}` : d ? `${pretty(d)}, pick a time` : 'Pick a day and time'],
+      ['you', 'Contact', st.you ? who : (who || 'Add your name and phone') + (!st.you && who ? ' (incomplete)' : '')]
+    ];
+    sumList.innerHTML = items.map(([k, b, v]) => `<li class="${st[k] ? 'is-done' : ''}"><div><b>${b}</b><span>${esc(v)}</span></div></li>`).join('');
+    const n = Object.values(st).filter(Boolean).length;
+    bar.style.width = (n / 4 * 100) + '%';
+    progressEl.textContent = n === 4 ? 'Ready to send' : `${n} of 4 done`;
+    Object.entries(st).forEach(([k, ok]) => {
+      sec(k).classList.toggle('is-done', ok);
+      if (ok) { const err = sec(k).querySelector('.bsec__error'); if (err) err.hidden = true; }
+    });
+    form.querySelectorAll('.field.is-invalid input').forEach(f => { const p = youProblems().find(([x]) => x === f); if (p && !p[1]) markField(f, false); });
   }
-  nextBtn.addEventListener('click', () => { if (!validate(step)) return; if (step < 4) show(step + 1); else buildReview(); });
-  backBtn.addEventListener('click', () => show(Math.max(1, step - 1)));
-  form.addEventListener('submit', (e) => { e.preventDefault(); nextBtn.click(); });
-  form.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && e.target.type !== 'radio') { e.preventDefault(); nextBtn.click(); } });
-  document.getElementById('bookEdit').addEventListener('click', () => show(4));
-  progress.forEach(li => li.addEventListener('click', () => { const k = +li.dataset.for; if (k < step || step === 5) show(k); }));
 
-  // Review + send
-  const label = (input) => { const sp = input.closest('label').querySelector('span').cloneNode(true); sp.querySelectorAll('i').forEach(i => i.remove()); return sp.textContent.trim(); };
-  function collect() {
-    const where = form.where.value, src = form.source.value;
+  function rows() {
+    const where = form.where.value;
     const concerns = [...form.querySelectorAll('input[name="concern"]:checked')].map(label);
     const d = chosenDate(), t = form.querySelector('input[name="time"]:checked');
     const win = windowsFor(fromIso(d).getDay()).find(w => w.v === t.value);
     return [
       ['Visit', { home: 'In-home test', cottage: 'Cottage visit', store: 'Bringing a sample to the store' }[where]],
-      ['Water source', { city: 'City / municipal', well: 'Private well', unsure: 'Not sure' }[src]],
+      ['Water source', { city: 'City / municipal', well: 'Private well', unsure: 'Not sure' }[form.source.value]],
       ['Concerns', concerns.join(', ')],
       ['Notes', form.notes.value.trim()],
       ['Preferred time', `${pretty(d)}, ${win.t.toLowerCase()} (${win.s})`],
@@ -1209,22 +1212,54 @@
       ['Address', where === 'store' ? '' : [form.address.value.trim(), form.town.value.trim()].filter(Boolean).join(', ')]
     ].filter(r => r[1]);
   }
+
+  // Submit: validate everything at once, then open the email
   let ref = '';
-  function buildReview() {
-    const rows = collect();
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const st = status();
+    const bad = Object.keys(st).filter(k => !st[k]);
+    if (bad.length) {
+      bad.forEach(k => {
+        const s = sec(k);
+        const err = s.querySelector('.bsec__error');
+        if (err) err.hidden = false;
+        s.classList.remove('is-error'); void s.offsetWidth; s.classList.add('is-error');
+      });
+      if (bad.includes('you')) {
+        youProblems().forEach(([f, isBad]) => markField(f, isBad));
+        const err = sec('you').querySelector('.bsec__error');
+        err.textContent = form.contact.value === 'email' && !form.email.value ? 'Add your email, since that’s how you’d like us to reach you.' : 'Please fill in the highlighted fields.';
+      }
+      const first = sec(bad[0]);
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const target = bad[0] === 'you' ? youProblems().find(([, b]) => b)[0] : first.querySelector('input:not([disabled])');
+      if (target) setTimeout(() => target.focus({ preventScroll: true }), 300);
+      return;
+    }
+    const r = rows();
     if (!ref) ref = 'WT-' + Date.now().toString(36).slice(-5).toUpperCase();
     document.getElementById('bookRef').textContent = ref;
-    const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    document.getElementById('bookSummary').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
-    const text = `Free water test request (${ref})\n\n` + rows.map(([k, v]) => `${k}: ${v}`).join('\n') + '\n\nSent from the website booking form.';
+    document.getElementById('bookSummary').innerHTML = r.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
+    const text = `Free water test request (${ref})\n\n` + r.map(([k, v]) => `${k}: ${v}`).join('\n') + '\n\nSent from the website booking form.';
     const subject = `Free water test request: ${form.name.value.trim()}, ${pretty(chosenDate())}`;
-    document.getElementById('bookSend').href = `mailto:${STORE}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-    review.dataset.text = text;
-    show(5);
-  }
+    const mailto = `mailto:${STORE}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+    document.getElementById('bookSend').href = mailto;
+    done.dataset.text = text;
+    form.hidden = true;
+    done.hidden = false;
+    book.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    done.focus({ preventScroll: true });
+    try { localStorage.removeItem(DRAFT); } catch (err) {}
+    window.location.href = mailto;
+  });
+  document.getElementById('bookEdit').addEventListener('click', () => {
+    done.hidden = true; form.hidden = false; save();
+    book.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   const copyBtn = document.getElementById('bookCopy');
   copyBtn.addEventListener('click', async () => {
-    const text = review.dataset.text || '';
+    const text = done.dataset.text || '';
     try { await navigator.clipboard.writeText(text); }
     catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e2) {} ta.remove(); }
     copyBtn.textContent = 'Copied ✓';
@@ -1236,9 +1271,10 @@
     const a = e.target.closest('a[href="#book"][data-concern]');
     if (!a) return;
     const box = form.querySelector(`input[name="concern"][value="${a.dataset.concern}"]`);
-    if (box) { box.checked = true; const u = form.querySelector('input[value="unsure"]'); if (u && box !== u) u.checked = false; }
+    if (box) { box.checked = true; const u = form.querySelector('input[name="concern"][value="unsure"]'); if (u && box !== u) u.checked = false; }
     if (['iron', 'sulphur', 'bacteria', 'tannins'].includes(a.dataset.concern) && form.source.value === 'city') form.querySelector('input[name="source"][value="well"]').checked = true;
-    save();
+    if (form.hidden) { done.hidden = true; form.hidden = false; }
+    summary(); save();
   });
 
   // Keep a draft in this browser so a refresh doesn't lose answers
@@ -1254,24 +1290,30 @@
     try { data = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch (e) { data = null; }
     if (!data) return;
     Object.entries(data).forEach(([k, vals]) => {
-      const els = form.querySelectorAll(`[name="${k}"]`);
-      els.forEach(el => {
+      if (k === 'time') return;
+      form.querySelectorAll(`[name="${k}"]`).forEach(el => {
         if (el.type === 'checkbox' || el.type === 'radio') el.checked = vals.includes(el.value);
         else el.value = vals[0];
       });
     });
-    if (data.date && !form.querySelector(`input[name="date"][value="${data.date[0]}"]`)) {
-      if (data.date[0] >= otherDate.min && data.date[0] <= otherDate.max) otherDate.value = data.date[0];
+    // a saved quick-pick date that has rolled off the strip becomes an "other" date
+    if (data.date && data.date[0] !== 'other' && !form.querySelector(`input[name="date"][value="${data.date[0]}"]`)) {
+      if (data.date[0] >= otherDate.min && data.date[0] <= otherDate.max) { form.querySelector('input[name="date"][value="other"]').checked = true; otherDate.value = data.date[0]; }
     }
+    otherWrap.hidden = (form.querySelector('input[name="date"]:checked') || {}).value !== 'other';
+    if (otherDate.value && (otherDate.value < otherDate.min || otherDate.value > otherDate.max)) otherDate.value = '';
     renderTimes();
-    if (data.time) { const t = form.querySelector(`input[name="time"][value="${data.time[0]}"]`); if (t) t.checked = true; }
+    if (data.time) { const t = form.querySelector(`input[name="time"][value="${data.time[0]}"]`); if (t && !t.disabled) t.checked = true; }
+    if (form.notes.value) noteToggle.click();
   }
-  form.addEventListener('input', save);
-  form.addEventListener('change', save);
-  document.getElementById('bookSend').addEventListener('click', () => { try { localStorage.removeItem(DRAFT); } catch (e) {} });
+  form.addEventListener('input', () => { summary(); save(); });
+  form.addEventListener('change', () => { summary(); save(); });
+
+  // hide the floating call button while the sticky send bar is on screen (phones)
+  if ('IntersectionObserver' in window) new IntersectionObserver(([en]) => document.body.classList.toggle('book-in-view', en.isIntersecting), { threshold: .05 }).observe(book);
 
   renderTimes();
   restore();
   syncWhere();
-  show(1, true);
+  summary();
 })();
