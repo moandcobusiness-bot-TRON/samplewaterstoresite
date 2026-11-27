@@ -98,19 +98,6 @@
   $$('.reveal').forEach(el => io ? io.observe(el) : el.classList.add('is-in'));
   if (!io) $$('[data-count]').forEach(countUp);
 
-  // Jug size picker
-  const cupCount = $('#cupCount');
-  const dayCount = $('#dayCount');
-  const miniJug = $('#miniJug');
-  $$('.seg button').forEach(btn => btn.addEventListener('click', () => {
-    $$('.seg button').forEach(b => b.setAttribute('aria-selected', String(b === btn)));
-    const litres = +btn.dataset.size;
-    const cups = Math.round(litres / 0.237);
-    cupCount.textContent = cups;
-    dayCount.textContent = Math.floor(cups / 8);
-    miniJug.classList.toggle('is-small', litres === 11);
-  }));
-
   // Water problem solver
   const PROBLEMS = {
     hard: { color: '#cfe3ea', cause: 'Hardness: calcium & magnesium', title: 'Scale, spots and dull laundry', body: 'Hard water leaves crusty scale on taps and kettles, spots on glassware, and film on the shower. It also wears down your water heater and dishwasher faster.', fix: 'A properly sized water softener' },
@@ -185,7 +172,7 @@
   });
 })();
 
-// Interactive hero water: device tilt/shake, drag, tap, hover and touch bubbles
+// Interactive hero water: drag, tap, hover and touch bubbles
 (() => {
   const hero = document.querySelector('.hero');
   const wrap = document.getElementById('jugWrap');
@@ -205,20 +192,19 @@
   const SVGNS = 'http://www.w3.org/2000/svg';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const needsPermission = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
 
   let waterA = 0, waterV = 0;   // surface angle relative to the jug, and its velocity
   let level = 0, levelV = 0;    // up/down slosh
   let energy = 8;               // drives wave height and speed
   let phase = 0, jugA = 0;
-  let dragTilt = 0, hoverTilt = 0, deviceTilt = 0, deviceRaw = 0;
-  let dragging = false, deviceActive = false, permAsked = false, running = true;
+  let dragTilt = 0, hoverTilt = 0;
+  let dragging = false, running = true;
   let lastInput = -1e9, hovering = false;
   const kick = (e) => { energy = Math.min(46, energy + e); };
   const touched = () => { lastInput = performance.now(); };
 
   const setHint = (t) => { hintText.textContent = t; };
-  setHint(needsPermission ? 'Tap to turn on tilt, then move your phone' : isTouch ? 'Tilt your phone, or drag the jug' : 'Drag, tap or hover the jug');
+  setHint(isTouch ? 'Drag or tap the jug to make waves' : 'Drag, tap or hover the jug');
 
   // Waves drawn each frame so their height reacts to motion
   function wavePath(y0, amp, ph, k2) {
@@ -340,69 +326,18 @@
   wrap.addEventListener('pointerup', endDrag);
   wrap.addEventListener('pointercancel', endDrag);
 
-  // Phone tilt + shake
-  function screenAngle() {
-    if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle;
-    return typeof window.orientation === 'number' ? window.orientation : 0;
-  }
-  function onOrient(e) {
-    if (e.gamma == null) return;
-    const ang = ((screenAngle() % 360) + 360) % 360;
-    let t = e.gamma;
-    if (ang === 90) t = e.beta; else if (ang === 270) t = -e.beta; else if (ang === 180) t = -e.gamma;
-    const next = clamp(t, -45, 45);
-    kick(Math.abs(next - deviceRaw) * .6);
-    deviceRaw = next;
-    if (!deviceActive) { deviceActive = true; setHint('Tilt or shake your phone'); setTimeout(() => hint.classList.add('is-hidden'), 4000); }
-  }
-  let lastShake = 0;
-  function onMotion(e) {
-    const a = e.acceleration && e.acceleration.x != null ? e.acceleration : null;
-    if (!a) return;
-    waterV += clamp(a.x, -15, 15) * .7;
-    levelV += clamp(a.y, -15, 15) * .2;
-    const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
-    kick(mag * .8);
-    const now = performance.now();
-    if (mag > 11 && now - lastShake > 300) { lastShake = now; splash(clamp(mag / 16, .7, 1.8)); }
-  }
-  let listening = false;
-  function listenMotion() {
-    if (listening) return;
-    listening = true;
-    window.addEventListener('deviceorientation', onOrient);
-    window.addEventListener('devicemotion', onMotion);
-  }
-  // iPhone/iPad: permission must be asked from a click / touchend, not touchstart
-  function requestMotion() {
-    if (!needsPermission || permAsked) return;
-    permAsked = true;
-    const asks = [DeviceOrientationEvent.requestPermission()];
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') asks.push(DeviceMotionEvent.requestPermission());
-    Promise.all(asks).then((r) => {
-      if (r[0] === 'granted') { listenMotion(); setHint('Tilt or shake your phone'); }
-      else { permAsked = false; if (!deviceActive) setHint('Drag or tap the jug to make waves'); }
-    }).catch(() => { permAsked = false; });
-  }
-  // Always listen (Android delivers events right away); also ask where a permission prompt exists
-  if ('DeviceOrientationEvent' in window) listenMotion();
-  if (needsPermission) {
-    document.addEventListener('touchend', requestMotion, { passive: true });
-    document.addEventListener('click', requestMotion);
-  }
-  hint.addEventListener('click', (e) => { e.stopPropagation(); requestMotion(); splash(1.4); });
+  hint.addEventListener('click', (e) => { e.stopPropagation(); splash(1.4); hint.classList.add('is-hidden'); });
 
   // Animation loop
   let t0 = performance.now();
   function frame(now) {
     if (!running) return;
     const dt = Math.min((now - t0) / 16.67, 3); t0 = now;
-    const idle = now - lastInput > 2500 && !deviceActive;
-    deviceTilt += (deviceRaw - deviceTilt) * .25 * dt;
-    let jugTarget = dragging ? dragTilt : deviceActive ? 0 : hovering ? hoverTilt : 0;
+    const idle = now - lastInput > 2500;
+    let jugTarget = dragging ? dragTilt : hovering ? hoverTilt : 0;
     if (idle) jugTarget = Math.sin(now / 1100) * 12; // gentle rocking so it always looks alive
     jugA += (jugTarget - jugA) * .14 * dt;
-    const target = clamp(-(jugA + deviceTilt), -42, 42);
+    const target = clamp(-jugA, -42, 42);
     waterV += (target - waterA) * .045 * dt;
     waterV *= Math.pow(.95, dt);
     waterA += waterV * dt;
@@ -428,7 +363,7 @@
       b.el.setAttribute('cy', b.y.toFixed(1));
       if (b.y < surface) { b.el.remove(); inBubbles.splice(i, 1); }
     }
-    const shift = clamp(deviceTilt * 1.2 + jugA * .8, -40, 40);
+    const shift = clamp(jugA * .8, -40, 40);
     bubbles.style.transform = `translateX(${(-shift).toFixed(1)}px)`;
     if (heroWaves[0]) heroWaves[0].style.transform = `translateX(${(shift * 1.4).toFixed(1)}px)`;
     if (heroWaves[1]) heroWaves[1].style.transform = `translateX(${(-shift * .8).toFixed(1)}px)`;
@@ -443,4 +378,191 @@
   }
   // A splash on load so visitors see it's alive
   setTimeout(() => { waterV += 10; splash(.9); }, 900);
+})();
+
+// Refill station: pick a size and watch it fill
+(() => {
+  const stage = document.getElementById('fillStage');
+  if (!stage) return;
+  const $ = (id) => document.getElementById(id);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const CX = 160, B = 370;
+
+  const SIZES = {
+    1:  { w: 58,  h: 150, nw: 24, nh: 22, sh: 26, r: 12, extra: 'none' },
+    4:  { w: 112, h: 190, nw: 34, nh: 20, sh: 32, r: 16, extra: 'handle' },
+    11: { w: 142, h: 228, nw: 50, nh: 22, sh: 42, r: 22, extra: 'ridge1' },
+    18: { w: 178, h: 272, nw: 56, nh: 26, sh: 54, r: 28, extra: 'ridges' }
+  };
+  function geo(s) {
+    const T = B - s.h, L = CX - s.w / 2, R = CX + s.w / 2, nl = CX - s.nw / 2, nr = CX + s.nw / 2;
+    const neckBase = T + s.nh, shEnd = neckBase + s.sh;
+    return { T, L, R, nl, nr, neckBase, shEnd };
+  }
+  function bottlePath(s) {
+    const g = geo(s);
+    return `M${g.nl} ${g.T} L${g.nl} ${g.neckBase} C${g.nl} ${g.neckBase + s.sh * .55} ${g.L} ${g.neckBase + s.sh * .35} ${g.L} ${g.shEnd} ` +
+      `L${g.L} ${B - s.r} Q${g.L} ${B} ${g.L + s.r} ${B} L${g.R - s.r} ${B} Q${g.R} ${B} ${g.R} ${B - s.r} ` +
+      `L${g.R} ${g.shEnd} C${g.R} ${g.neckBase + s.sh * .35} ${g.nr} ${g.neckBase + s.sh * .55} ${g.nr} ${g.neckBase} L${g.nr} ${g.T} Z`;
+  }
+  function extraPath(s) {
+    const g = geo(s);
+    if (s.extra === 'handle') {
+      const y1 = g.shEnd + 6, y2 = g.shEnd + 60;
+      return `M${g.R - 4} ${y1} C${g.R + 30} ${y1} ${g.R + 30} ${y2} ${g.R - 4} ${y2}`;
+    }
+    const ys = s.extra === 'ridges' ? [.42, .62, .82] : s.extra === 'ridge1' ? [.62] : [];
+    return ys.map(f => { const y = g.shEnd + (B - g.shEnd) * f; return `M${g.L + 6} ${y} L${g.R - 6} ${y}`; }).join(' ');
+  }
+
+  // Size buttons get true-to-scale icons
+  const buttons = [...document.querySelectorAll('.size')];
+  buttons.forEach(btn => {
+    const s = SIZES[btn.dataset.l];
+    btn.querySelector('.size__icon').innerHTML = `<svg viewBox="20 90 280 290" aria-hidden="true"><path d="${bottlePath(s)}"/></svg>`;
+  });
+
+  const el = {
+    clip: $('bottleClipPath'), outline: $('bottleOutline'), extra: $('bottleExtra'), shine: $('bottleShine'),
+    cap: $('bottleCap'), group: $('bottleGroup'), wave: $('fillWave'), waveBack: $('fillWaveBack'),
+    bubbles: $('fillBubbles'), stream: $('stream'), light: $('fillLight'),
+    litres: $('fillLitres'), capLabel: $('fillCap'), done: $('fillDone'),
+    stat: $('fillStat')
+  };
+
+  let size = 18, s = SIZES[18], g = geo(s);
+  let progress = 0, filling = false, fillStart = 0, duration = 3000;
+  let phase = 0, turb = 0, streamLen = 0, streamY = 70, visible = false;
+  const inner = [];
+
+  function setShape(litres) {
+    size = litres; s = SIZES[litres]; g = geo(s);
+    const d = bottlePath(s);
+    el.clip.setAttribute('d', d);
+    el.outline.setAttribute('d', d);
+    el.extra.setAttribute('d', extraPath(s));
+    el.shine.setAttribute('d', `M${g.L + 14} ${g.shEnd + 14} L${g.L + 14} ${B - s.r - 10}`);
+    el.cap.setAttribute('x', g.nl - 4);
+    el.cap.setAttribute('y', g.T - 12);
+    el.cap.setAttribute('width', s.nw + 8);
+    el.capLabel.textContent = litres;
+    const cups = Math.round(litres / 0.237);
+    const days = Math.floor(cups / 8);
+    el.stat.innerHTML = cups >= 8
+      ? `<span>${cups}</span> cups per fill. That's about <span>${days}</span> ${days === 1 ? 'day' : 'days'} of 8 cups for one person.`
+      : `<span>${cups}</span> cups per fill. Perfect for your bag, desk or the gym.`;
+    inner.splice(0).forEach(b => b.el.remove());
+  }
+
+  function startFill() {
+    progress = 0;
+    filling = true;
+    fillStart = performance.now();
+    duration = 1000 + 700 * Math.sqrt(size);
+    el.cap.classList.remove('is-on');
+    el.done.classList.remove('is-on');
+    el.light.setAttribute('fill', '#4cc3f0');
+    if (reduced) { progress = 1; finish(); render(performance.now()); }
+  }
+  function finish() {
+    filling = false;
+    progress = 1;
+    el.light.setAttribute('fill', '#3ee08f');
+    setTimeout(() => { el.cap.classList.add('is-on'); el.done.classList.add('is-on'); }, reduced ? 0 : 250);
+    turb = Math.max(turb, 6);
+  }
+
+  function select(btn) {
+    buttons.forEach(b => b.setAttribute('aria-checked', String(b === btn)));
+    setShape(+btn.dataset.l);
+    el.group.classList.remove('is-swap');
+    void el.group.getBBox();
+    el.group.classList.add('is-swap');
+    startFill();
+  }
+  buttons.forEach(btn => btn.addEventListener('click', () => select(btn)));
+  // Arrow keys move between sizes (radio group behaviour)
+  buttons.forEach((btn, i) => btn.addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(k)) return;
+    e.preventDefault();
+    const n = buttons[(i + (k === 'ArrowRight' || k === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length];
+    n.focus(); select(n);
+  }));
+
+  // Tap / drag the stage: refill, or slosh the water if it's still pouring
+  let lastX = null;
+  stage.addEventListener('click', () => { if (!filling) startFill(); else turb += 6; });
+  stage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startFill(); } });
+  stage.addEventListener('pointermove', (e) => {
+    if (lastX !== null) turb = Math.min(14, turb + Math.abs(e.clientX - lastX) * .08);
+    lastX = e.clientX;
+  }, { passive: true });
+  stage.addEventListener('pointerleave', () => { lastX = null; });
+
+  function wave(y, amp, ph) {
+    let d = '';
+    for (let x = 0; x <= 320; x += 10) {
+      const yy = y + Math.sin(x * .05 + ph) * amp + Math.sin(x * .023 - ph * 1.3) * amp * .5;
+      d += (x ? 'L' : 'M') + x + ' ' + yy.toFixed(1) + ' ';
+    }
+    return d + 'V 400 H 0 Z';
+  }
+
+  function render(now) {
+    if (filling) {
+      const t = Math.min((now - fillStart) / duration, 1);
+      progress = 1 - Math.pow(1 - t, 1.6);
+      if (t >= 1) finish();
+    }
+    const top = g.neckBase + 6;
+    const surface = B - (B - top) * progress;
+    // stream from nozzle to the water; when the tap shuts off the last of it falls in
+    if (filling) {
+      streamY = 70;
+      streamLen += (Math.max(0, surface - 70) - streamLen) * .35;
+    } else if (streamLen > 0) {
+      streamY += 14; streamLen -= 14;
+    }
+    el.stream.setAttribute('y', streamY.toFixed(1));
+    el.stream.setAttribute('height', Math.max(0, streamLen).toFixed(1));
+
+    turb = turb * .96 + (filling ? .5 : 0);
+    phase += .06 + turb * .012;
+    const amp = progress > 0 ? Math.min(2 + turb * .9, 12) : 0;
+    el.wave.setAttribute('d', wave(surface, amp, phase));
+    el.waveBack.setAttribute('d', wave(surface - 4, amp * .8, -phase * .8 + 1.5));
+    el.litres.textContent = (progress * size).toFixed(1);
+
+    // bubbles where the stream hits
+    if (filling && progress > .02 && Math.random() < .5 && inner.length < 50) {
+      const c = document.createElementNS(SVGNS, 'circle');
+      const b = { el: c, x: CX + (Math.random() - .5) * 30, y: surface + 10 + Math.random() * 40, v: .6 + Math.random() * 1.4, r: 1.5 + Math.random() * 4, w: Math.random() * 6 };
+      c.setAttribute('r', b.r); c.setAttribute('fill', 'rgba(255,255,255,.8)');
+      el.bubbles.appendChild(c); inner.push(b);
+    }
+    for (let i = inner.length - 1; i >= 0; i--) {
+      const b = inner[i];
+      b.y -= b.v; b.w += .1;
+      b.el.setAttribute('cx', (b.x + Math.sin(b.w) * 3).toFixed(1));
+      b.el.setAttribute('cy', b.y.toFixed(1));
+      if (b.y < surface + 2) { b.el.remove(); inner.splice(i, 1); }
+    }
+  }
+
+  function loop(now) {
+    if (visible || filling) render(now);
+    requestAnimationFrame(loop);
+  }
+
+  setShape(18);
+  render(performance.now());
+  requestAnimationFrame(loop);
+  let started = false;
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(([en]) => {
+    visible = en.isIntersecting;
+    if (visible && !started) { started = true; startFill(); }
+  }, { threshold: .35 }) : null;
+  if (io) io.observe(stage); else { visible = true; startFill(); }
 })();
