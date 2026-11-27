@@ -804,3 +804,248 @@
   requestAnimationFrame(frame);
   dock.classList.add('is-intro');
 })();
+
+// FAQ: smart search, topic filters, and a call-the-store fallback
+(() => {
+  const input = document.getElementById('faqSearch');
+  if (!input) return;
+  const list = document.getElementById('faqList');
+  const suggest = document.getElementById('faqSuggest');
+  const clearBtn = document.getElementById('faqClear');
+  const countEl = document.getElementById('faqCount');
+  const empty = document.getElementById('faqEmpty');
+  const emptyText = document.getElementById('faqEmptyText');
+  const emptyStatus = document.getElementById('faqEmptyStatus');
+  const emailLink = document.getElementById('faqEmail');
+  const topicBtns = [...document.querySelectorAll('.faq-topic')];
+  const TOPIC_NAMES = {};
+  topicBtns.forEach(b => { TOPIC_NAMES[b.dataset.topic] = b.firstChild.textContent.trim(); });
+
+  const STOP = new Set('a an the is are am was be do does did i my me we you your our us it its to of in on at for and or with can could should would will how what why when which who this that there any get have has many some about from by if as so just please'.split(' '));
+  const SYN = {
+    salt: ['softener', 'delivery'], smell: ['sulphur', 'smell'], smells: ['sulphur', 'smell'], stink: ['sulphur', 'smell'], stinky: ['sulphur', 'smell'],
+    odor: ['sulphur', 'smell'], odour: ['sulphur', 'smell'], egg: ['sulphur', 'smell'], eggs: ['sulphur', 'smell'], sulfur: ['sulphur'],
+    rust: ['iron', 'stain'], rusty: ['iron', 'stain'], orange: ['iron'], brown: ['iron', 'tannin'], yellow: ['tannin'], stain: ['iron', 'stain'], stains: ['iron', 'stain'],
+    germ: ['bacteria', 'uv'], germs: ['bacteria', 'uv'], ecoli: ['bacteria', 'uv'], coliform: ['bacteria', 'uv'], bacteria: ['bacteria', 'uv', 'well'], safe: ['safe'],
+    much: ['cost', 'price'], price: ['cost', 'price'], prices: ['cost', 'price'], cost: ['cost', 'price'], costs: ['cost', 'price'], expensive: ['cost', 'price'], cheap: ['cost', 'price'], pay: ['cost', 'price'],
+    open: ['hours', 'open'], opening: ['hours'], close: ['hours'], closed: ['hours'], closing: ['hours'], today: ['hours'], weekend: ['hours'], sunday: ['hours'], saturday: ['hours'], time: ['hours'], hour: ['hours'],
+    address: ['located', 'address'], located: ['address'], location: ['address'], directions: ['address'], where: ['address'], parking: ['address'],
+    deliver: ['delivery'], delivered: ['delivery'], bring: ['delivery'], drop: ['delivery', 'purolator'],
+    fix: ['service', 'repair'], broken: ['service', 'repair'], repair: ['service', 'repair'], leaking: ['service', 'repair'], technician: ['service'],
+    ro: ['reverse', 'osmosis', 'ro'], osmosis: ['reverse', 'osmosis', 'ro'], purified: ['ro', 'filter'], purify: ['ro', 'filter'],
+    ph: ['alkaline', 'ph'], scale: ['hard', 'scale'], limescale: ['hard', 'scale'], calcium: ['hard'], spots: ['hard'], spotty: ['hard'], soft: ['softener', 'soften'],
+    jug: ['refill', 'jug'], jugs: ['refill', 'jug'], bottle: ['refill', 'bottle'], bottles: ['refill', 'bottle'], fill: ['refill'], litre: ['refill'], liter: ['refill'], litres: ['refill'], liters: ['refill'],
+    test: ['test', 'testing'], testing: ['test'], tested: ['test'], analysis: ['test'], sample: ['test'],
+    coffee: ['kcup', 'pods'], pod: ['pods'], keurig: ['kcup', 'pods'], package: ['purolator'], parcel: ['purolator'], shipping: ['purolator'], courier: ['purolator'],
+    guarantee: ['warranty'], warrantee: ['warranty'], cottage: ['well', 'cottage'], fridge: ['fridge', 'refrigerator'], refrigerator: ['fridge'], cooler: ['cooler'], dispenser: ['cooler'],
+    uv: ['uv', 'ultraviolet'], ultraviolet: ['uv'], drinking: ['drink'], drink: ['drink']
+  };
+  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/k-cups?/g, 'kcup').replace(/e\.?\s?coli/g, 'ecoli').replace(/[^a-z0-9\s]/g, ' ');
+  const stem = (w) => w.length > 4 ? w.replace(/(ing|ed|es|s)$/, '') : w;
+  const words = (s) => norm(s).split(/\s+/).filter(Boolean);
+  const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function lev(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      let best = i;
+      for (let j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        best = Math.min(best, cur[j]);
+      }
+      if (best > max) return max + 1;
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  // Index the questions
+  const items = [...list.querySelectorAll('details')].map((d, i) => {
+    const summary = d.querySelector('summary');
+    const q = summary.textContent;
+    const toSet = (s) => new Set(words(s).filter(w => !STOP.has(w)).map(stem));
+    return {
+      d, summary, q, i, topic: d.dataset.topic,
+      fq: toSet(q), fk: toSet(d.dataset.keys || ''), fa: toSet(d.querySelector('p').textContent)
+    };
+  });
+
+  function queryTokens(raw) {
+    const ws = words(raw);
+    const endsWithSpace = /\s$/.test(raw);
+    return ws.filter(w => !STOP.has(w) || ws.length === 1).map((w, idx, arr) => ({
+      w: stem(w), raw: w, prefix: !endsWithSpace && idx === arr.length - 1 && w.length >= 2,
+      syn: (SYN[w] || SYN[stem(w)] || []).map(stem)
+    }));
+  }
+  function fieldScore(set, tok, weights) {
+    if (set.has(tok.w)) return weights[0];
+    let best = 0;
+    for (const s of tok.syn) if (set.has(s)) best = Math.max(best, weights[0] * .75);
+    if (best) return best;
+    if (tok.prefix) for (const w of set) if (w.startsWith(tok.w)) return weights[1];
+    if (tok.w.length >= 4) {
+      const max = tok.w.length >= 7 ? 2 : 1;
+      for (const w of set) if (lev(tok.w, w, max) <= max) return weights[2];
+    }
+    return 0;
+  }
+  function score(item, toks) {
+    if (!toks.length) return 0;
+    let total = 0, hit = 0;
+    for (const t of toks) {
+      const s = Math.max(fieldScore(item.fq, t, [4, 2.5, 2]), fieldScore(item.fk, t, [3, 2, 1.5]), fieldScore(item.fa, t, [1, .5, .5]));
+      if (s > 0) hit++;
+      total += s;
+    }
+    const ratio = hit / toks.length;
+    // multi-word questions must mostly match, otherwise it isn't really answered here
+    if (toks.length >= 2 && ratio < .6) return 0;
+    return total * (.4 + .6 * ratio);
+  }
+  function highlight(text, toks) {
+    if (!toks.length) return esc(text);
+    return text.split(/(\s+)/).map(part => {
+      const n = stem(norm(part).trim());
+      if (!n) return esc(part);
+      const on = toks.some(t => n === t.w || t.syn.includes(n) || (t.prefix && n.startsWith(t.w)) || (t.w.length >= 4 && n.length >= 4 && lev(t.w, n, 1) <= 1));
+      return on ? `<mark>${esc(part)}</mark>` : esc(part);
+    }).join('');
+  }
+
+  let topic = 'all', active = -1, options = [], lastToks = [], lastQuery = '';
+
+  function setTopic(t) {
+    topic = t;
+    topicBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.topic === t)));
+    apply();
+  }
+  topicBtns.forEach(b => b.addEventListener('click', () => setTopic(b.dataset.topic)));
+
+  function storeOpen() {
+    const H = { 0: [11, 16], 1: [9, 20], 2: [9, 20], 3: [9, 20], 4: [9, 20], 5: [9, 20], 6: [9, 17] };
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date());
+      const g = (t) => parts.find(p => p.type === t).value;
+      const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(g('weekday'));
+      const mins = (parseInt(g('hour'), 10) % 24) * 60 + parseInt(g('minute'), 10);
+      const [o, c] = H[day];
+      return { open: mins >= o * 60 && mins < c * 60, close: c };
+    } catch (e) { return null; }
+  }
+
+  // Filter the list (and reorder by relevance while searching)
+  function apply() {
+    const raw = input.value;
+    const toks = queryTokens(raw);
+    lastToks = toks; lastQuery = raw.trim();
+    const searching = toks.length > 0;
+    const scored = items.map(it => ({ it, s: searching ? score(it, toks) : 1 }));
+    const inTopic = (it) => topic === 'all' || it.topic === topic;
+    const shown = scored.filter(x => inTopic(x.it) && (!searching || x.s >= 1.5));
+    const order = searching ? [...scored].sort((a, b) => b.s - a.s || a.it.i - b.it.i) : scored;
+    order.forEach(x => list.appendChild(x.it.d));
+    scored.forEach(x => {
+      const vis = shown.includes(x);
+      x.it.d.hidden = !vis;
+      x.it.summary.innerHTML = vis && searching ? highlight(x.it.q, toks) : esc(x.it.q);
+    });
+    const topicLabel = topic === 'all' ? '' : ` in ${TOPIC_NAMES[topic]}`;
+    if (!searching) countEl.textContent = `Showing ${shown.length} question${shown.length === 1 ? '' : 's'}${topicLabel || ' across all topics'}`;
+    else countEl.textContent = shown.length ? `${shown.length} question${shown.length === 1 ? '' : 's'} match “${lastQuery}”${topicLabel}` : '';
+
+    const elsewhere = searching && !shown.length && topic !== 'all' ? scored.filter(x => x.s >= 1.5).length : 0;
+    empty.hidden = !(searching && !shown.length);
+    if (!empty.hidden) {
+      if (elsewhere) {
+        emptyText.innerHTML = `No matches for “${esc(lastQuery)}” in ${esc(TOPIC_NAMES[topic])}, but ${elsewhere} in other topics. <button type="button" class="link-btn" id="faqShowAll">Search all topics</button>, or call us and we'll answer it.`;
+        document.getElementById('faqShowAll').addEventListener('click', () => setTopic('all'));
+      } else {
+        emptyText.textContent = `We don't have an answer for “${lastQuery}” in our FAQ yet. Our team answers water questions every day, so give us a call and we'll help you out.`;
+      }
+      emailLink.href = `mailto:goodwater@thewaterstoremilton.com?subject=${encodeURIComponent('Question: ' + lastQuery)}`;
+      const st = storeOpen();
+      emptyStatus.className = 'faq-empty__status' + (st ? (st.open ? ' is-open' : ' is-closed') : '');
+      emptyStatus.textContent = st ? (st.open ? `We're open now until ${st.close > 12 ? st.close - 12 : st.close} p.m. Someone can answer right away.` : 'We’re closed right now. Leave a message or email us and we’ll get back to you.') : '';
+    }
+    clearBtn.hidden = !raw;
+    renderSuggest(scored, toks);
+  }
+
+  // Suggestions dropdown
+  function renderSuggest(scored, toks) {
+    options = [];
+    if (!toks.length || document.activeElement !== input) { closeSuggest(); return; }
+    const top = scored.filter(x => x.s >= 1.5).sort((a, b) => b.s - a.s).slice(0, 6);
+    const html = [];
+    // topic shortcuts
+    Object.entries(TOPIC_NAMES).forEach(([k, name]) => {
+      if (k === 'all') return;
+      const nn = norm(name);
+      if (toks.some(t => t.raw.length >= 3 && nn.split(/\s+/).some(w => w.startsWith(t.raw)))) options.push({ kind: 'topic', k, label: name });
+    });
+    top.forEach(x => options.push({ kind: 'q', it: x.it }));
+    const best = top.length ? top[0].s : 0;
+    options.push({ kind: 'call', weak: best < 3.5 });
+    if (top.length) html.push('<li class="faq-suggest__hint" role="presentation">Suggested questions</li>');
+    options.forEach((o, i) => {
+      const id = `faq-opt-${i}`;
+      if (o.kind === 'topic') html.push(`<li role="option" id="${id}" data-i="${i}" aria-selected="false"><span class="faq-suggest__tag">Topic</span><span class="faq-suggest__text">Show all <b>${esc(o.label)}</b> questions</span></li>`);
+      else if (o.kind === 'q') html.push(`<li role="option" id="${id}" data-i="${i}" aria-selected="false"><span class="faq-suggest__text">${highlight(o.it.q, toks)}</span><span class="faq-suggest__tag">${esc(TOPIC_NAMES[o.it.topic])}</span></li>`);
+      else html.push(`<li role="option" id="${id}" data-i="${i}" aria-selected="false" class="faq-suggest__call"><span class="faq-suggest__tag">Call</span><span class="faq-suggest__text">${top.length ? 'Not what you’re looking for? Call 905-693-8820' : `No answer for “${esc(lastQuery)}” yet. Call the store at 905-693-8820`}</span></li>`);
+    });
+    suggest.innerHTML = html.join('');
+    suggest.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+    active = -1;
+    input.removeAttribute('aria-activedescendant');
+  }
+  function closeSuggest() {
+    suggest.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+    active = -1;
+  }
+  function setActive(i) {
+    const lis = [...suggest.querySelectorAll('[role="option"]')];
+    if (!lis.length) return;
+    active = (i + lis.length) % lis.length;
+    lis.forEach((li, k) => li.setAttribute('aria-selected', String(k === active)));
+    input.setAttribute('aria-activedescendant', lis[active].id);
+    lis[active].scrollIntoView({ block: 'nearest' });
+  }
+  function choose(i) {
+    const o = options[i];
+    if (!o) return;
+    closeSuggest();
+    if (o.kind === 'call') { window.location.href = 'tel:9056938820'; return; }
+    if (o.kind === 'topic') { input.value = ''; setTopic(o.k); return; }
+    if (topic !== 'all' && o.it.topic !== topic) setTopic('all');
+    const d = o.it.d;
+    d.hidden = false;
+    d.open = true;
+    d.classList.remove('is-flash'); void d.offsetWidth; d.classList.add('is-flash');
+    d.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  input.addEventListener('input', apply);
+  input.addEventListener('focus', () => { if (input.value.trim()) apply(); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (suggest.hidden) apply(); setActive(active + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (active >= 0) choose(active);
+      else { const firstQ = options.findIndex(o => o.kind === 'q'); if (firstQ >= 0) choose(firstQ); else closeSuggest(); }
+    } else if (e.key === 'Escape') {
+      if (!suggest.hidden) closeSuggest(); else { input.value = ''; apply(); }
+    }
+  });
+  suggest.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus in the input
+  suggest.addEventListener('click', (e) => { const li = e.target.closest('[role="option"]'); if (li) choose(+li.dataset.i); });
+  input.addEventListener('blur', () => setTimeout(closeSuggest, 120));
+  clearBtn.addEventListener('click', () => { input.value = ''; apply(); input.focus(); });
+
+  apply();
+})();

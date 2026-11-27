@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -477,20 +477,68 @@
           <p class="eyebrow">FAQ</p>
           <h2>Questions? <span class="ink">We've got answers.</span></h2>
         </header>
-        <div class="faq__list">
-          <details><summary>What is alkaline water?</summary><p>Alkaline water has a higher pH than tap water or reverse osmosis water. Fans say it eases digestion, supports the immune system and helps the body recover after intense exercise. You can fill up on it at our U-Fill station.</p></details>
-          <details><summary>What is hard water?</summary><p>Hard water carries lots of dissolved minerals such as calcium and magnesium carbonate. It's fine to drink, but it builds scale in pipes, showerheads and appliances. It also makes every cleaning job harder: dingy laundry, spotted dishes, film on shower doors, and hair that feels sticky and dull.</p></details>
-          <details><summary>Do I need a water softener?</summary><p>Groundwater and well water are usually hard. Watch for scale on appliances, dry skin and hair, grey or faded clothes, stains on sinks and tubs, frequent plumbing repairs and rising water bills. Even on municipal water, a softener helps appliances run better and leaves skin, hair and linens nicer. Bring in a water sample for a free test, or try the <a href="#quiz">60-second check</a> above.</p></details>
-          <details><summary>How much does a water softener cost?</summary><p>It depends on the type, size and complexity of the system. Visit us and we'll find the best match for your budget and your needs.</p></details>
-          <details><summary>What are the benefits of soft water?</summary><p>A softener swaps calcium and magnesium for sodium ions, then recharges itself with a salt solution. Soft water protects your appliances and plumbing. It also makes clothes cleaner, softer, brighter and longer-lasting, gives you spot-free glassware, and leaves skin and hair silky smooth.</p></details>
-          <details><summary>Is softened water safe to drink?</summary><p>Yes. A properly working softener adds only about 75–100 mg of sodium per quart. A slice of white bread has about 120 mg. If you'd like less, you can regenerate with potassium chloride, or add a reverse osmosis system for sodium-free drinking water.</p></details>
-          <details><summary>What are the main operating costs?</summary><p>Mainly softener salt, which we stock and deliver. The water and energy a softener uses to regenerate are smaller, secondary costs.</p></details>
-          <details><summary>Will a softener increase my water bill?</summary><p>Softeners use some water to regenerate. Most models we sell and recommend are energy- and water-efficient. Softeners can also save money: your dishwasher, water heater and washer last longer, and you need less detergent and water to get things clean.</p></details>
-          <details><summary>Will a water softener harm my septic system?</summary><p>A good-quality softener that's set up and maintained properly is fine for a septic system. Salt doesn't harm the bacteria or soil in the drainage field. Backwash runs about 55–100 L a week, so regenerating no more than once a week keeps it in check. Soft water also means you use fewer soaps and chemicals. A poorly running softener can over-regenerate, which is why proper setup matters.</p></details>
-          <details><summary>Is softened water corrosive?</summary><p>No. Ion-exchange softening doesn't change how corrosive water is. Corrosion comes from pH, dissolved oxygen, ammonia, chloride and flow velocity, and softening doesn't affect any of them.</p></details>
-          <details><summary>Are water softeners noisy?</summary><p>Hardly. The only sound is water moving through the unit during the backwash cycle.</p></details>
-          <details><summary>When should I not use softened water?</summary><p>Softened water isn't recommended for lawns and outdoor use, so every system we install includes a bypass valve. If you'd prefer no added sodium or potassium in your drinking water, we can add a separate cold-water line, or better yet, a purified drinking water system.</p></details>
-          <details><summary>How do I maintain my softener, and where does it go?</summary><p>Most softeners need little care. A properly sized unit should regenerate about once a week, which is usually enough for a family of four. Softeners go where the water line enters your home and should be installed by a professional. That's us.</p></details>
+        <div class="faq-search" id="faqSearchWrap">
+          <label class="visually-hidden" for="faqSearch">Search the FAQ</label>
+          <div class="faq-search__box">
+            <svg class="faq-search__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="faqSearch" type="search" placeholder="Search questions, e.g. “rotten egg smell” or “delivery”" autocomplete="off" spellcheck="false"
+              role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="faqSuggest">
+            <button type="button" class="faq-search__clear" id="faqClear" aria-label="Clear search" hidden>×</button>
+          </div>
+          <ul class="faq-suggest" id="faqSuggest" role="listbox" aria-label="Suggested questions" hidden></ul>
+        </div>
+        <div class="faq-topics" role="group" aria-label="Filter questions by topic">
+            <button type="button" class="faq-topic" data-topic="all" aria-pressed="true">All <span>29</span></button>
+            <button type="button" class="faq-topic" data-topic="softeners" aria-pressed="false">Hard water &amp; softeners <span>11</span></button>
+            <button type="button" class="faq-topic" data-topic="drinking" aria-pressed="false">Drinking water &amp; refills <span>5</span></button>
+            <button type="button" class="faq-topic" data-topic="well" aria-pressed="false">Well &amp; cottage <span>5</span></button>
+            <button type="button" class="faq-topic" data-topic="store" aria-pressed="false">Store &amp; delivery <span>8</span></button>
+        </div>
+        <p class="faq-count" id="faqCount" aria-live="polite">Showing all 29 questions</p>
+        <div class="faq__list" id="faqList">
+          <details data-topic="drinking" data-keys="ph alkaline mineral health exercise recovery" id="faq-1"><summary>What is alkaline water?</summary><p>Alkaline water has a higher pH than tap water or reverse osmosis water. Fans say it eases digestion, supports the immune system and helps the body recover after intense exercise. You can fill up on it at our U-Fill station.</p></details>
+          <details data-topic="drinking" data-keys="ro reverse osmosis membrane filter purified drinking system price cost tds" id="faq-2"><summary>What is reverse osmosis (RO) water?</summary><p>Reverse osmosis pushes water through a very fine membrane that filters out most dissolved solids, leaving crisp, clean drinking water. Fill up at our U-Fill station, or have a customized RO system installed at home, <strong>starting at $398</strong>.</p></details>
+          <details data-topic="drinking" data-keys="refill fill jug bottle station ufill 18l 11l 18 litre litre liter prepaid card pack" id="faq-3"><summary>Can I refill my own bottles?</summary><p>Yes. Bring clean jugs or bottles to our self-serve U-Fill station for reverse osmosis or alkaline water. We fill the standard 11 L and 18 L jugs, and regulars buy refills in advance in packs of 50 or 100 to save every visit. See the <a href="#refills">U-Fill station</a>.</p></details>
+          <details data-topic="drinking" data-keys="spring distilled bottled crystal mountain buy" id="faq-4"><summary>Do you sell spring and distilled water?</summary><p>Yes. Pre-bottled spring and distilled water is ready to grab in store, or we can deliver it. Our spring water comes in fresh every week from Crystal Mountain Products.</p></details>
+          <details data-topic="drinking" data-keys="cooler dispenser bottleless office fountain" id="faq-5"><summary>Do you sell water coolers and dispensers?</summary><p>Yes. We carry water coolers and dispensers, including bottle-less coolers for home or office.</p></details>
+          <details data-topic="softeners" data-keys="hardness calcium magnesium scale limescale minerals spots" id="faq-6"><summary>What is hard water?</summary><p>Hard water carries lots of dissolved minerals such as calcium and magnesium carbonate. It's fine to drink, but it builds scale in pipes, showerheads and appliances. It also makes every cleaning job harder: dingy laundry, spotted dishes, film on shower doors, and hair that feels sticky and dull.</p></details>
+          <details data-topic="softeners" data-keys="softener need signs scale dry skin hair laundry stains" id="faq-7"><summary>Do I need a water softener?</summary><p>Groundwater and well water are usually hard. Watch for scale on appliances, dry skin and hair, grey or faded clothes, stains on sinks and tubs, frequent plumbing repairs and rising water bills. Even on municipal water, a softener helps appliances run better and leaves skin, hair and linens nicer. Bring in a water sample for a free test, or try the <a href="#quiz">60-second check</a>.</p></details>
+          <details data-topic="softeners" data-keys="price cost buy budget expensive softener" id="faq-8"><summary>How much does a water softener cost?</summary><p>It depends on the type, size and complexity of the system. Visit us and we'll find the best match for your budget and your needs.</p></details>
+          <details data-topic="softeners" data-keys="benefits soft why ion exchange resin" id="faq-9"><summary>What are the benefits of soft water?</summary><p>A softener swaps calcium and magnesium for sodium ions, then recharges itself with a salt solution. Soft water protects your appliances and plumbing. It also makes clothes cleaner, softer, brighter and longer-lasting, gives you spot-free glassware, and leaves skin and hair silky smooth.</p></details>
+          <details data-topic="softeners" data-keys="safe drink sodium salt potassium health" id="faq-10"><summary>Is softened water safe to drink?</summary><p>Yes. A properly working softener adds only about 75–100 mg of sodium per quart. A slice of white bread has about 120 mg. If you'd like less, you can regenerate with potassium chloride, or add a reverse osmosis system for sodium-free drinking water.</p></details>
+          <details data-topic="softeners" data-keys="operating running cost salt" id="faq-11"><summary>What are the main operating costs of a softener?</summary><p>Mainly softener salt, which we stock and deliver. The water and energy a softener uses to regenerate are smaller, secondary costs.</p></details>
+          <details data-topic="softeners" data-keys="water bill regenerate backwash save money" id="faq-12"><summary>Will a softener increase my water bill?</summary><p>Softeners use some water to regenerate. Most models we sell and recommend are energy- and water-efficient. Softeners can also save money: your dishwasher, water heater and washer last longer, and you need less detergent and water to get things clean.</p></details>
+          <details data-topic="well" data-keys="septic tank drainage field backwash softener rural" id="faq-13"><summary>Will a water softener harm my septic system?</summary><p>A good-quality softener that's set up and maintained properly is fine for a septic system. Salt doesn't harm the bacteria or soil in the drainage field. Backwash runs about 55–100 L a week, so regenerating no more than once a week keeps it in check. Soft water also means you use fewer soaps and chemicals. A poorly running softener can over-regenerate, which is why proper setup matters.</p></details>
+          <details data-topic="softeners" data-keys="corrosive corrosion pipes" id="faq-14"><summary>Is softened water corrosive?</summary><p>No. Ion-exchange softening doesn't change how corrosive water is. Corrosion comes from pH, dissolved oxygen, ammonia, chloride and flow velocity, and softening doesn't affect any of them.</p></details>
+          <details data-topic="softeners" data-keys="noise noisy loud sound" id="faq-15"><summary>Are water softeners noisy?</summary><p>Hardly. The only sound is water moving through the unit during the backwash cycle.</p></details>
+          <details data-topic="softeners" data-keys="bypass lawn garden outdoor watering" id="faq-16"><summary>When should I not use softened water?</summary><p>Softened water isn't recommended for lawns and outdoor use, so every system we install includes a bypass valve. If you'd prefer no added sodium or potassium in your drinking water, we can add a separate cold-water line, or better yet, a purified drinking water system.</p></details>
+          <details data-topic="softeners" data-keys="maintain maintenance install installation where location care" id="faq-17"><summary>How do I maintain my softener, and where does it go?</summary><p>Most softeners need little care. A properly sized unit should regenerate about once a week, which is usually enough for a family of four. Softeners go where the water line enters your home and should be installed by a professional. That's us.</p></details>
+          <details data-topic="well" data-keys="smell odour odor rotten egg sulphur sulfur stinky stink" id="faq-18"><summary>Why does my water smell like rotten eggs?</summary><p>That's usually hydrogen sulphide (sulphur), which is common in well water and often stronger in hot water. We install chemical-free iron and sulphur filters that get rid of the smell for good. Start with a <a href="#test">free water test</a>.</p></details>
+          <details data-topic="well" data-keys="orange brown rust stain iron tannin tannins tea colour color discoloured yellow" id="faq-19"><summary>Why do I have orange or brown stains, or tea-coloured water?</summary><p>Orange and rusty stains usually mean iron. Yellow-brown, tea-coloured water often comes from tannins (decaying organic matter). We have iron filters, filter media and tannin filters for homes and cottages.</p></details>
+          <details data-topic="well" data-keys="well cottage bacteria ecoli e coli uv ultraviolet disinfect safe germs viqua" id="faq-20"><summary>How can I make my well or cottage water safe?</summary><p>Test it first. You often can't see, smell or taste bacteria. For disinfection we install UV (ultraviolet) light systems for homes and cottages, a chemical-free way to treat water. We carry VIQUA systems and parts.</p></details>
+          <details data-topic="well" data-keys="test testing analysis free sample check quote in-home" id="faq-21"><summary>Do you offer free water testing?</summary><p>Yes, and it's always free with no obligation. We'll come to your house or cottage at a convenient time, talk through your concerns, test your municipal or well water, check your plumbing and give you a quote. You can also bring a sample into the store. <a href="#test">How it works</a>.</p></details>
+          <details data-topic="store" data-keys="hours open opening close closing time today sunday saturday weekend when" id="faq-22"><summary>What are your store hours?</summary><p>Monday to Friday 9:00 a.m. – 8:00 p.m., Saturday 9:00 a.m. – 5:00 p.m., and Sunday 11:00 a.m. – 4:00 p.m.</p></details>
+          <details data-topic="store" data-keys="address location where directions map parking find milton" id="faq-23"><summary>Where are you located?</summary><p>525 Ontario St S, Milton, ON L9T 2N2, at the corner of Laurier Ave and Ontario Street South. <a href="#visit">Map and directions</a>.</p></details>
+          <details data-topic="store" data-keys="delivery deliver salt road pool winter office home drop off bring" id="faq-24"><summary>Do you deliver water and salt?</summary><p>Yes. We deliver drinking water, softener salt and road salt to homes and offices around Milton, and we stock pool salt. Call us to set up delivery.</p></details>
+          <details data-topic="store" data-keys="service repair repairs brand brands fix broken maintenance clack fleck viqua other" id="faq-25"><summary>Do you service other brands?</summary><p>Yes. We service all makes and models of water treatment equipment, and we do regular maintenance and repairs. We install and service brands like VIQUA, Clack and Fleck.</p></details>
+          <details data-topic="store" data-keys="warranty guarantee parts labour labor" id="faq-26"><summary>What warranty do you offer?</summary><p>Most of our water treatment products come with a full five-year parts and labour warranty.</p></details>
+          <details data-topic="store" data-keys="fridge refrigerator filter shower cartridge housing air purifier pet bowl" id="faq-27"><summary>Do you sell fridge filters and other filters?</summary><p>Yes. We carry replacement refrigerator filters, shower filters, filter housings and cartridges, plus air purifiers and pet bowls.</p></details>
+          <details data-topic="store" data-keys="coffee kcup k-cup kcups nespresso pods tea" id="faq-28"><summary>Do you sell K-Cups or coffee pods?</summary><p>Yes. We carry K-Cups and Nespresso-compatible pods. Brew them with RO water for a better cup.</p></details>
+          <details data-topic="store" data-keys="purolator parcel package shipping courier drop" id="faq-29"><summary>Are you a Purolator drop-off location?</summary><p>Yes. You can drop off Purolator packages at our store during opening hours.</p></details>
+        </div>
+        <div class="faq-empty" id="faqEmpty" hidden>
+          <div class="faq-empty__icon" aria-hidden="true">☎️</div>
+          <h3>We don't have that one written down yet.</h3>
+          <p id="faqEmptyText">Our team answers water questions every day. Give us a call and we'll help you out.</p>
+          <div class="faq-empty__actions">
+            <a class="btn btn--sun btn--lg" href="tel:9056938820">Call 905-693-8820</a>
+            <a class="btn btn--ghost btn--lg" id="faqEmail" href="mailto:goodwater@thewaterstoremilton.com">Email your question</a>
+          </div>
+          <p class="faq-empty__status" id="faqEmptyStatus"></p>
+        </div>
+        <div class="faq-callout">
+          <p><strong>Still have a question?</strong> Talk to a real person at the store.</p>
+          <a class="btn btn--blue" href="tel:9056938820">Call 905-693-8820</a>
         </div>
       </div>
     </section>
@@ -578,6 +626,6 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.3.2 2.5.57 3.6a1 1 0 0 1-.25 1z"/></svg>
   </a>
 
-  <script src="script.js?v=5"></script>
+  <script src="script.js?v=6"></script>
 </body>
 </html>
