@@ -184,10 +184,8 @@
   const splashEl = document.getElementById('splash');
   const bubbles = document.querySelector('.hero__bubbles');
   const heroWaves = document.querySelectorAll('.hero__wave path');
-  const hint = document.getElementById('tiltHint');
-  const hintText = document.getElementById('tiltHintText');
   if (!hero || !wrap || !tiltG || !front) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { hint.classList.add('is-hidden'); return; }
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   const SVGNS = 'http://www.w3.org/2000/svg';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -203,8 +201,6 @@
   const kick = (e) => { energy = Math.min(46, energy + e); };
   const touched = () => { lastInput = performance.now(); };
 
-  const setHint = (t) => { hintText.textContent = t; };
-  setHint(isTouch ? 'Drag or tap the jug to make waves' : 'Drag, tap or hover the jug');
 
   // Waves drawn each frame so their height reacts to motion
   function wavePath(y0, amp, ph, k2) {
@@ -248,6 +244,8 @@
     waterV += (Math.random() - .5) * 16 * power;
     kick(18 * power);
   }
+
+  document.addEventListener('lab:splash', () => splash(1.3));
 
   // Bubbles + ripples under the finger / cursor
   let lastBubble = 0;
@@ -326,7 +324,6 @@
   wrap.addEventListener('pointerup', endDrag);
   wrap.addEventListener('pointercancel', endDrag);
 
-  hint.addEventListener('click', (e) => { e.stopPropagation(); splash(1.4); hint.classList.add('is-hidden'); });
 
   // Animation loop
   let t0 = performance.now();
@@ -565,4 +562,245 @@
     if (visible && !started) { started = true; startFill(); }
   }, { threshold: .35 }) : null;
   if (io) io.observe(stage); else { visible = true; startFill(); }
+})();
+
+// Hero water lab: each service shows the problem, then fixes it in the jug
+(() => {
+  const card = document.getElementById('labCard');
+  if (!card) return;
+  const $ = (id) => document.getElementById(id);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const el = {
+    kicker: $('labKicker'), title: $('labTitle'), metric: $('labMetric'), value: $('labValue'), unit: $('labUnit'),
+    barWrap: $('labBarWrap'), bar: $('labBar'), run: $('labRun'), cta: $('labCta'), note: $('labNote'),
+    top: $('jwTop'), bot: $('jwBot'), back: $('waveBack'), parts: $('labParticles'),
+    scale: $('labScale'), uv: $('labUV'), sweep: $('labSweep'), stink: $('labStink'), strip: $('labStrip'),
+    big: $('labelBig'), small: $('labelSmall'), wrap: $('jugWrap')
+  };
+  const chips = [...document.querySelectorAll('.lab-chip')];
+  const dock = document.querySelector('.lab-dock');
+  const pads = el.strip ? [...el.strip.querySelectorAll('.pad')] : [];
+
+  const CLEAN = { top: '#4cc3f0', bot: '#1673c9', back: '#7fd6f7' };
+  const MODES = {
+    ro: {
+      kicker: 'Reverse osmosis', problem: 'Cloudy water full of dissolved solids.', done: 'Crisp, clean RO water.',
+      from: 340, to: 12, dec: 0, unit: 'ppm dissolved solids', barFrom: .9, barTo: .06,
+      dirty: { top: '#9fbab0', bot: '#57756d', back: '#b9cbc4' }, clean: CLEAN,
+      particles: 'sediment', count: 46, fx: 'sweep', run: 'Run the RO filter',
+      cta: ['#products', 'See RO systems, from $398 →'], label: ['RO', 'FILTERED']
+    },
+    alkaline: {
+      kicker: 'Alkaline water', problem: 'Plain filtered water sits around pH 7.', done: 'Alkaline water, ready to drink.',
+      from: 7.0, to: 9.5, dec: 1, unit: 'pH', barFrom: .5, barTo: .95, good: true,
+      dirty: { top: '#a9e1f3', bot: '#5ba7d9', back: '#c8edf9' }, clean: { top: '#5fe3cf', bot: '#128fb4', back: '#9cf0e2' },
+      particles: null, count: 0, fx: 'minerals', run: 'Add minerals',
+      cta: ['#refills', 'Fill up at our U-Fill station →'], label: ['pH 9.5', 'ALKALINE']
+    },
+    soften: {
+      kicker: 'Water softener', problem: 'Hard water leaves chalky scale on everything.', done: 'Soft water. No more scale.',
+      from: 20, to: 0, dec: 0, unit: 'grains of hardness', barFrom: .92, barTo: 0,
+      dirty: { top: '#d0e2e7', bot: '#8db0bc', back: '#e3eff2' }, clean: CLEAN,
+      particles: 'flakes', count: 34, fx: 'beads', scale: true, run: 'Soften the water',
+      cta: ['#quiz', 'Do I need a softener? Take the check →'], label: ['0 gpg', 'SOFTENED']
+    },
+    iron: {
+      kicker: 'Iron & sulphur filter', problem: 'Orange stains and a rotten-egg smell.', done: 'Clear, odour-free water.',
+      from: 2.4, to: 0, dec: 1, unit: 'mg/L iron', barFrom: .85, barTo: 0,
+      dirty: { top: '#e0aa6c', bot: '#9a5a27', back: '#ebc292' }, clean: CLEAN,
+      particles: 'rust', count: 38, fx: 'sweep', stink: true, run: 'Run the iron filter',
+      cta: ['#solutions', 'How we fix iron & sulphur →', 'iron'], label: ['0.0', 'IRON FREE']
+    },
+    uv: {
+      kicker: 'UV disinfection', problem: 'Well and cottage water can carry bacteria you can’t see.', done: 'Bacteria inactivated with UV light.',
+      from: 0, to: 99.99, dec: 2, unit: '% inactivated', barFrom: 0, barTo: 1, good: true,
+      dirty: { top: '#94d9c6', bot: '#2e8c86', back: '#b8e8da' }, clean: CLEAN,
+      particles: 'microbes', count: 16, fx: 'uv', run: 'Switch on the UV light',
+      cta: ['#solutions', 'UV systems for homes & cottages →', 'bacteria'], label: ['UV', 'DISINFECTED']
+    },
+    test: {
+      kicker: 'Free water test', problem: 'Not sure what’s in your water? We’ll test it free.', done: 'Example result: hard water with a little iron.',
+      from: 0, to: 3, dec: 0, unit: 'of 3 checks done', barFrom: 0, barTo: 1, good: true,
+      dirty: CLEAN, clean: CLEAN,
+      particles: null, count: 0, fx: 'strip', run: 'Test this water',
+      cta: ['#test', 'Book my free in-home test →'], label: ['TESTED', 'FREE ANALYSIS']
+    }
+  };
+
+  // colour helpers
+  const hex = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => { const A = hex(a), B = hex(b); return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',') + ')'; };
+  const ease = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  let mode = null, cfg = null, phase = 'idle', p = 0, runStart = 0, RUN_MS = 2600;
+  let parts = [];
+  let curColors = { ...CLEAN };
+
+  function setColors(c) {
+    curColors = c;
+    el.top.setAttribute('stop-color', c.top);
+    el.bot.setAttribute('stop-color', c.bot);
+    el.back.setAttribute('fill', c.back);
+  }
+  function blend(t) {
+    return { top: mix(cfg.dirty.top, cfg.clean.top, t), bot: mix(cfg.dirty.bot, cfg.clean.bot, t), back: mix(cfg.dirty.back, cfg.clean.back, t) };
+  }
+
+  // particles
+  function makePart(type) {
+    let node;
+    const x = 78 + Math.random() * 164, y = 215 + Math.random() * 175;
+    if (type === 'sediment') { node = document.createElementNS(SVGNS, 'circle'); node.setAttribute('r', (1.5 + Math.random() * 2.5).toFixed(1)); node.setAttribute('fill', 'rgba(84,66,48,.75)'); }
+    else if (type === 'rust') { node = document.createElementNS(SVGNS, 'circle'); node.setAttribute('r', (2 + Math.random() * 2.5).toFixed(1)); node.setAttribute('fill', '#b5541c'); }
+    else if (type === 'flakes') { node = document.createElementNS(SVGNS, 'rect'); node.setAttribute('width', (5 + Math.random() * 6).toFixed(1)); node.setAttribute('height', '3'); node.setAttribute('rx', '1.5'); node.setAttribute('fill', '#ffffff'); node.setAttribute('opacity', '.9'); }
+    else if (type === 'microbes') { node = document.createElementNS(SVGNS, 'g'); node.innerHTML = '<ellipse rx="7" ry="4" fill="#6fe07c"/><circle cx="-2" cy="-1" r="1.3" fill="#1d6b2a"/><circle cx="2.5" cy="1" r="1" fill="#1d6b2a"/><path d="M7 0 q5 -4 9 0" stroke="#6fe07c" stroke-width="2" fill="none"/>'; }
+    else if (type === 'beads') { node = document.createElementNS(SVGNS, 'circle'); node.setAttribute('r', (3 + Math.random() * 2).toFixed(1)); node.setAttribute('fill', '#f2b544'); node.setAttribute('stroke', '#fff2cc'); node.setAttribute('stroke-width', '1'); }
+    else if (type === 'minerals') { node = document.createElementNS(SVGNS, 'path'); const s = 3 + Math.random() * 3; node.setAttribute('d', `M0 ${-s} L${s * .6} 0 L0 ${s} L${-s * .6} 0Z`); node.setAttribute('fill', '#eafffb'); }
+    el.parts.appendChild(node);
+    return { node, type, x, y, vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .3, a: Math.random() * 6.28, life: 1, kill: Math.random(), dying: 0 };
+  }
+  function clearParts() { parts.forEach(q => q.node.remove()); parts = []; }
+
+  function uiProblem() {
+    el.kicker.textContent = cfg.kicker;
+    el.title.textContent = cfg.problem;
+    el.metric.hidden = false; el.barWrap.hidden = false;
+    el.run.hidden = false; el.run.disabled = false; el.run.textContent = cfg.run;
+    el.cta.hidden = true;
+    el.note.textContent = mode === 'test' ? 'Or tap the jug to dip the test strip.' : 'Or tap the jug to run it. Example values.';
+    showValue(0);
+  }
+  function uiDone() {
+    el.title.textContent = cfg.done;
+    el.run.hidden = true;
+    el.cta.hidden = false;
+    el.cta.textContent = cfg.cta[1];
+    el.cta.setAttribute('href', cfg.cta[0]);
+    el.cta.dataset.solver = cfg.cta[2] || '';
+    el.note.textContent = 'Example values. Tap another service to try it.';
+    el.big.textContent = cfg.label[0];
+    el.small.textContent = cfg.label[1];
+    card.classList.remove('is-bump'); void card.offsetWidth; card.classList.add('is-bump');
+    chips.forEach(c => { if (c.dataset.mode === mode) c.classList.add('is-done'); });
+  }
+  function showValue(t) {
+    const v = cfg.from + (cfg.to - cfg.from) * t;
+    el.value.textContent = v.toFixed(cfg.dec);
+    el.unit.textContent = cfg.unit;
+    const w = cfg.barFrom + (cfg.barTo - cfg.barFrom) * t;
+    el.bar.style.width = (w * 100).toFixed(1) + '%';
+    const goodness = cfg.good ? w : 1 - w;
+    el.bar.style.background = mix('#ff7a45', '#2fd17f', clamp(goodness, 0, 1));
+  }
+
+  function select(m) {
+    mode = m; cfg = MODES[m]; phase = 'problem'; p = 0;
+    dock.classList.remove('is-intro');
+    chips.forEach(c => c.setAttribute('aria-pressed', String(c.dataset.mode === m)));
+    clearParts();
+    for (let i = 0; i < cfg.count; i++) parts.push(makePart(cfg.particles));
+    setColors(cfg.dirty);
+    el.scale.setAttribute('opacity', cfg.scale ? '.85' : '0');
+    el.stink.setAttribute('opacity', cfg.stink ? '1' : '0');
+    el.uv.setAttribute('opacity', '0');
+    el.sweep.setAttribute('opacity', '0');
+    el.strip.setAttribute('opacity', '0');
+    el.strip.setAttribute('transform', 'translate(0 -240)');
+    pads.forEach(pd => pd.setAttribute('fill', '#f1f5f9'));
+    el.big.textContent = '18 L'; el.small.textContent = 'PURE R.O.';
+    uiProblem();
+  }
+  function run() {
+    if (!cfg || phase !== 'problem') return;
+    phase = 'running'; runStart = performance.now(); p = 0;
+    el.run.disabled = true; el.run.textContent = mode === 'test' ? 'Testing…' : 'Working…';
+    if (mode === 'test') el.strip.setAttribute('opacity', '1');
+    if (reduced) { p = 1; finish(); }
+  }
+  function finish() {
+    phase = 'done'; p = 1;
+    setColors(cfg.clean);
+    showValue(1);
+    el.scale.setAttribute('opacity', '0');
+    el.stink.setAttribute('opacity', '0');
+    el.uv.setAttribute('opacity', '0');
+    el.sweep.setAttribute('opacity', '0');
+    if (mode !== 'test') el.strip.setAttribute('opacity', '0');
+    parts.filter(q => q.type !== 'minerals').forEach(q => { q.dying = q.dying || 1; });
+    if (mode === 'test') { pads[0].setAttribute('fill', '#a855f7'); pads[1].setAttribute('fill', '#f59e0b'); pads[2].setAttribute('fill', '#22c55e'); }
+    uiDone();
+    // celebrate with the hero's own tap-splash
+    document.dispatchEvent(new CustomEvent('lab:splash'));
+  }
+
+  chips.forEach(c => c.addEventListener('click', () => select(c.dataset.mode)));
+  el.run.addEventListener('click', run);
+  // a tap (not a drag) on the jug runs the selected service
+  let downX = null;
+  el.wrap.addEventListener('pointerdown', (e) => { if (e.isTrusted) downX = e.clientX; });
+  el.wrap.addEventListener('pointerup', (e) => { if (e.isTrusted && downX !== null && Math.abs(e.clientX - downX) < 8) run(); downX = null; });
+  // CTA to the problem solver also opens the matching tab
+  el.cta.addEventListener('click', () => {
+    const k = el.cta.dataset.solver;
+    if (k) { const tab = document.querySelector(`.solver__tabs button[data-p="${k}"]`); if (tab) tab.click(); }
+  });
+
+  // animation
+  let t0 = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - t0) / 16.67, 3); t0 = now;
+    if (phase === 'running') {
+      const t = clamp((now - runStart) / RUN_MS, 0, 1);
+      p = ease(t);
+      showValue(p);
+      setColors(blend(p));
+      if (cfg.fx === 'sweep') {
+        el.sweep.setAttribute('opacity', '1');
+        const y = 60 + 350 * p;
+        el.sweep.setAttribute('transform', `translate(0 ${y.toFixed(1)})`);
+        parts.forEach(q => { if (!q.dying && q.y < y) q.dying = 1; });
+        el.stink.setAttribute('opacity', cfg.stink ? (1 - p).toFixed(2) : '0');
+      } else if (cfg.fx === 'uv') {
+        el.uv.setAttribute('opacity', (Math.min(1, t * 4) * (.75 + Math.sin(now / 60) * .25)).toFixed(2));
+        parts.forEach(q => { if (!q.dying && q.kill < p) q.dying = 1; });
+      } else if (cfg.fx === 'beads') {
+        if (Math.random() < .5 && parts.filter(q => q.type === 'beads').length < 26 && p < .8) parts.push(makePart('beads'));
+        parts.forEach(q => { if (q.type === 'flakes' && !q.dying && q.kill < p * 1.1) q.dying = 1; if (q.type === 'beads' && p > .8) q.dying = q.dying || 1; });
+        el.scale.setAttribute('opacity', (.85 * (1 - p)).toFixed(2));
+      } else if (cfg.fx === 'minerals') {
+        if (Math.random() < .6) { const m = makePart('minerals'); m.y = 390; m.vy = -(1 + Math.random() * 1.5); parts.push(m); }
+      } else if (cfg.fx === 'strip') {
+        const dip = clamp(t / .35, 0, 1);
+        el.strip.setAttribute('transform', `translate(0 ${(-240 * (1 - ease(dip))).toFixed(1)})`);
+        const colors = ['#a855f7', '#f59e0b', '#22c55e'];
+        pads.forEach((pd, i) => { const s = clamp((t - .4 - i * .15) / .15, 0, 1); pd.setAttribute('fill', mix('#f1f5f9', colors[i], s)); });
+      }
+      if (t >= 1) finish();
+    }
+    // move particles
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i];
+      q.a += .05 * dt;
+      if (q.type === 'minerals') { q.y += (q.vy || -1.2) * dt; q.x += Math.sin(q.a) * .4; if (q.y < 200) { q.dying = q.dying || 1; } }
+      else if (q.type === 'beads') { const cx = 160, cy = 300; const ang = Math.atan2(q.y - cy, q.x - cx) + .06 * dt; const r = Math.hypot(q.x - cx, q.y - cy) * .995 + .3; q.x = cx + Math.cos(ang) * r; q.y = cy + Math.sin(ang) * r; }
+      else { q.vx += (Math.random() - .5) * .06; q.vy += (Math.random() - .5) * .06; q.vx *= .98; q.vy *= .98; q.x += q.vx * dt; q.y += q.vy * dt; }
+      q.x = clamp(q.x, 72, 248); q.y = clamp(q.y, 196, 396);
+      let op = 1, sc = 1;
+      if (q.dying) {
+        q.dying += .06 * dt;
+        op = clamp(2 - q.dying, 0, 1);
+        if (q.type === 'microbes') { sc = 1 + (q.dying - 1) * 1.5; q.node.setAttribute('fill', '#fff'); }
+        if (op <= 0) { q.node.remove(); parts.splice(i, 1); continue; }
+      }
+      const rot = q.type === 'flakes' || q.type === 'microbes' ? ` rotate(${(Math.sin(q.a) * 40).toFixed(0)})` : '';
+      q.node.setAttribute('transform', `translate(${q.x.toFixed(1)} ${q.y.toFixed(1)})${rot} scale(${sc.toFixed(2)})`);
+      q.node.setAttribute('opacity', op.toFixed(2));
+      if (q.type === 'microbes' && q.dying) q.node.querySelectorAll('ellipse,path').forEach(n => { n.setAttribute('fill', n.tagName === 'path' ? 'none' : '#f5f3ff'); n.setAttribute('stroke', n.tagName === 'path' ? '#f5f3ff' : 'none'); });
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  dock.classList.add('is-intro');
 })();

@@ -351,7 +351,7 @@ address a { font-weight: 700; text-decoration: none; }
   .nav .nav__cta { margin: 8px 0 0; }
   .hero { padding: 50px 0 130px; }
   .hero__inner { grid-template-columns: 1fr; }
-  .hero__art { width: min(260px, 70%); order: -1; margin-bottom: 10px; }
+
   .hero__badge--a { left: -30%; }
   .hero__badge--b { right: -30%; }
   .refill-grid, .reviews, .coupons, .steps { grid-template-columns: 1fr 1fr; }
@@ -457,4 +457,57 @@ address a { font-weight: 700; text-decoration: none; }
 @media (max-width: 640px) {
   .sizes { grid-template-columns: repeat(2, 1fr); }
   .size__icon { height: 56px; }
+}
+
+/* Hero water lab */
+.hero__inner { grid-template-columns: 1fr 1fr; }
+.hero__art { width: min(580px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) 230px; grid-template-areas: "jug card" "dock dock"; gap: 16px 20px; align-items: center; }
+.jug-wrap { grid-area: jug; width: 100%; max-width: 300px; justify-self: center; }
+.jug { overflow: visible; }
+.stink { animation: stink 1.8s ease-in-out infinite; }
+.stink--2 { animation-delay: -.6s; }
+.stink--3 { animation-delay: -1.2s; }
+@keyframes stink { 0% { transform: translateY(10px); opacity: 0; } 40% { opacity: 1; } 100% { transform: translateY(-26px); opacity: 0; } }
+.lab-card { grid-area: card; position: relative; background: rgba(255,255,255,.96); color: var(--ink-deep); border-radius: 20px; padding: 18px 18px 16px; box-shadow: 0 24px 50px -22px rgba(0,0,0,.55); transition: transform .3s; }
+.lab-card.is-bump { animation: cardBump .45s ease; }
+@keyframes cardBump { 40% { transform: scale(1.03); } }
+.lab-card__kicker { font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan); margin: 0 0 6px; }
+.lab-card__title { font-family: var(--serif); font-weight: 700; font-size: 1.12rem; line-height: 1.25; margin: 0 0 10px; color: var(--ink-deep); }
+.lab-card__metric { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+.lab-card__metric span { font-family: var(--serif); font-weight: 800; font-size: 2.2rem; line-height: 1; color: var(--blue); font-variant-numeric: tabular-nums; }
+.lab-card__metric small { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.lab-card__bar { height: 8px; border-radius: 99px; background: #e3eef6; overflow: hidden; margin-bottom: 12px; }
+.lab-card__bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--sun); }
+.lab-card__run { width: 100%; padding: .7em 1em; font-size: .92rem; }
+.lab-card__run[disabled] { opacity: .65; cursor: progress; transform: none; }
+.lab-card__cta { display: block; margin-top: 4px; font-weight: 800; font-size: .92rem; color: var(--blue); text-decoration: none; }
+.lab-card__cta:hover { text-decoration: underline; }
+.lab-card__note { display: block; margin-top: 8px; font-size: .74rem; color: var(--muted); }
+.lab-card [hidden] { display: none !important; }
+.lab-dock { grid-area: dock; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.lab-chip { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 74px; padding: 8px 4px; border-radius: 16px; border: 1.5px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); backdrop-filter: blur(6px); color: #e6f3ff; font: 800 .76rem/1.15 var(--sans); text-align: center; cursor: pointer; transition: background .2s, transform .2s, border-color .2s, color .2s; }
+.lab-chip:hover { transform: translateY(-3px); border-color: rgba(255,255,255,.55); background: rgba(255,255,255,.16); }
+.lab-chip[aria-pressed="true"] { background: #fff; color: var(--blue); border-color: #fff; box-shadow: 0 12px 26px -12px rgba(0,0,0,.6); }
+.lab-chip.is-done::after { content: "✓"; position: absolute; }
+.lab-chip { position: relative; }
+.lab-chip.is-done::after { top: 6px; right: 8px; width: 18px; height: 18px; border-radius: 50%; background: #3ee08f; color: #06331d; font-size: .7rem; display: grid; place-items: center; }
+.lab-chip__ico { font-size: 1.3rem; line-height: 1; }
+.lab-chip__ico--txt { font-family: var(--serif); font-size: 1.05rem; font-weight: 800; color: var(--aqua); }
+.lab-chip[aria-pressed="true"] .lab-chip__ico--txt { color: var(--blue); }
+.lab-dock.is-intro .lab-chip { animation: chipNudge 2.6s ease-in-out infinite; }
+.lab-dock.is-intro .lab-chip:nth-child(2) { animation-delay: .15s; }
+.lab-dock.is-intro .lab-chip:nth-child(3) { animation-delay: .3s; }
+.lab-dock.is-intro .lab-chip:nth-child(4) { animation-delay: .45s; }
+.lab-dock.is-intro .lab-chip:nth-child(5) { animation-delay: .6s; }
+.lab-dock.is-intro .lab-chip:nth-child(6) { animation-delay: .75s; }
+@keyframes chipNudge { 0%, 70%, 100% { transform: none; } 80% { transform: translateY(-5px); } 90% { transform: translateY(1px); } }
+@media (max-width: 1100px) {
+  .hero__inner { grid-template-columns: 1fr; }
+  .hero__art { justify-self: center; }
+}
+@media (max-width: 640px) {
+  .hero__art { grid-template-columns: 1fr; grid-template-areas: "jug" "dock" "card"; gap: 14px; }
+  .jug-wrap { max-width: 230px; }
+  .lab-dock { grid-template-columns: repeat(3, 1fr); }
+  .lab-chip { min-height: 64px; }
 }
