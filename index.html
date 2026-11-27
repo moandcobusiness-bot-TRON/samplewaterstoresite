@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=7">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -325,102 +325,100 @@
           <li class="step reveal"><span class="step__n">4</span><h3>Quote</h3><p>You get a clear quote to fix it. The decision is entirely yours.</p></li>
         </ol>
         <div class="book reveal" id="book">
-          <div class="book__intro">
+          <div class="book__head">
             <div>
               <h3>Book your free water test</h3>
-              <p>One short form. No payment, no obligation.</p>
+              <p>Takes about a minute. No payment, no obligation.</p>
             </div>
             <a href="tel:9056938820" class="book__call">Prefer to talk? <b>905-693-8820</b></a>
           </div>
-
+          <ol class="book__progress" aria-label="Booking steps">
+            <li class="is-on" data-for="1"><span>1</span>Location</li>
+            <li data-for="2"><span>2</span>Concerns</li>
+            <li data-for="3"><span>3</span>Date &amp; time</li>
+            <li data-for="4"><span>4</span>Your details</li>
+          </ol>
           <form class="book__form" id="bookForm" novalidate>
-            <div class="book__main">
-              <section class="bsec" data-sec="where" aria-labelledby="bsecWhere">
-                <h4 id="bsecWhere"><span class="bsec__n" aria-hidden="true">1</span>Where should we test?</h4>
-                <div class="seg" role="radiogroup" aria-labelledby="bsecWhere">
-                  <label class="seg__opt"><input type="radio" name="where" value="home" checked><span><i aria-hidden="true">🏠</i>My home</span></label>
-                  <label class="seg__opt"><input type="radio" name="where" value="cottage"><span><i aria-hidden="true">🌲</i>My cottage</span></label>
-                  <label class="seg__opt"><input type="radio" name="where" value="store"><span><i aria-hidden="true">🧪</i>I'll bring a sample</span></label>
-                </div>
-                <div class="bsec__inline">
-                  <span class="bsec__sub" id="srcLabel">Water source</span>
-                  <div class="chips chips--tight" role="radiogroup" aria-labelledby="srcLabel">
-                    <label class="chip chip--sm"><input type="radio" name="source" value="city" checked><span>City / municipal</span></label>
-                    <label class="chip chip--sm"><input type="radio" name="source" value="well"><span>Private well</span></label>
-                    <label class="chip chip--sm"><input type="radio" name="source" value="unsure"><span>Not sure</span></label>
-                  </div>
-                </div>
-              </section>
-
-              <section class="bsec" data-sec="concerns" aria-labelledby="bsecConcerns">
-                <h4 id="bsecConcerns"><span class="bsec__n" aria-hidden="true">2</span>What's bothering you? <small>Pick any</small></h4>
-                <div class="chips" role="group" aria-labelledby="bsecConcerns">
-                  <label class="chip"><input type="checkbox" name="concern" value="hard"><span><i aria-hidden="true">🧂</i>Scale & hard water</span></label>
-                  <label class="chip"><input type="checkbox" name="concern" value="iron"><span><i aria-hidden="true">🟠</i>Orange stains (iron)</span></label>
-                  <label class="chip"><input type="checkbox" name="concern" value="sulphur"><span><i aria-hidden="true">🥚</i>Rotten-egg smell</span></label>
-                  <label class="chip"><input type="checkbox" name="concern" value="chlorine"><span><i aria-hidden="true">🏊</i>Chlorine taste or smell</span></label>
-                  <label class="chip"><input type="checkbox" name="concern" value="bacteria"><span><i aria-hidden="true">🦠</i>Bacteria / well safety</span></label>
-                  <label class="chip"><input type="checkbox" name="concern" value="tannins"><span><i aria-hidden="true">🍂</i>Brown or tea-coloured water</span></label>
-                  <label class="chip"><input type="checkbox" name="concern" value="drinking"><span><i aria-hidden="true">💧</i>Better drinking water</span></label>
-                  <label class="chip"><input type="checkbox" name="concern" value="unsure"><span><i aria-hidden="true">🧪</i>Not sure, just test it</span></label>
-                </div>
-                <button type="button" class="link-btn bsec__note-toggle" id="noteToggle" aria-expanded="false" aria-controls="noteField">+ Add a note</button>
-                <label class="field" id="noteField" hidden><span class="visually-hidden">Anything else we should know? (optional)</span>
-                  <textarea name="notes" rows="2" placeholder="Anything else we should know? e.g. new house, stains in the toilet, baby on the way…"></textarea>
-                </label>
-                <p class="bsec__error" data-error="concerns" role="alert" hidden>Pick at least one, or “Not sure, just test it”.</p>
-              </section>
-
-              <section class="bsec" data-sec="when" aria-labelledby="bsecWhen">
-                <h4 id="bsecWhen"><span class="bsec__n" aria-hidden="true">3</span><span id="whenLegend">When works for you?</span></h4>
-                <div class="dates" id="bookDates" role="radiogroup" aria-labelledby="bsecWhen"></div>
-                <div class="dates__other" id="dateOtherWrap" hidden>
-                  <label class="field field--inline">Pick a date <input type="date" name="dateOther" id="bookDateOther"></label>
-                </div>
-                <div class="chips chips--times" id="bookTimes" role="radiogroup" aria-label="Preferred time"></div>
-                <p class="bsec__hint" id="bookTimeNote"></p>
-                <p class="bsec__error" data-error="when" role="alert" hidden>Choose a date and a time.</p>
-              </section>
-
-              <section class="bsec" data-sec="you" aria-labelledby="bsecYou">
-                <h4 id="bsecYou"><span class="bsec__n" aria-hidden="true">4</span>How do we reach you?</h4>
-                <div class="field-grid">
-                  <label class="field">Full name<input name="name" autocomplete="name" required></label>
-                  <label class="field">Phone<input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="905-555-0123" required></label>
-                  <label class="field"><span>Email <span class="opt">(optional)</span></span><input name="email" type="email" autocomplete="email"></label>
-                  <label class="field">Best way to reach you
-                    <select name="contact"><option value="phone">Phone call</option><option value="text">Text message</option><option value="email">Email</option></select>
-                  </label>
-                  <label class="field" id="addrField">Address of the visit<input name="address" autocomplete="street-address" placeholder="Street address"></label>
-                  <label class="field" id="townField">Town<input name="town" autocomplete="address-level2" value="Milton"></label>
-                </div>
-                <p class="bsec__error" data-error="you" role="alert" hidden>Please fill in the highlighted fields.</p>
-              </section>
-            </div>
-
-            <aside class="book__side" aria-label="Your request">
-              <div class="bsum">
-                <p class="bsum__title">Your request</p>
-                <ul class="bsum__list" id="bookSumList"></ul>
-                <div class="bsum__progress"><div class="bsum__bar"><i id="bookBar"></i></div><span id="bookProgress">0 of 4 done</span></div>
-                <button type="submit" class="btn btn--sun btn--lg bsum__send" id="bookSubmit">Send request</button>
-                <p class="bsum__note">Opens your email app with everything filled in. The store will call to confirm.</p>
+            <fieldset class="book__step is-active" data-step="1">
+              <legend>Where should we test?</legend>
+              <div class="pick-row pick-row--3">
+                <label class="pick pick--big"><input type="radio" name="where" value="home" required checked><span><i aria-hidden="true">🏠</i><b>At my home</b><small>We come to you</small></span></label>
+                <label class="pick pick--big"><input type="radio" name="where" value="cottage"><span><i aria-hidden="true">🌲</i><b>At my cottage</b><small>Well or lake water</small></span></label>
+                <label class="pick pick--big"><input type="radio" name="where" value="store"><span><i aria-hidden="true">🧪</i><b>I'll bring a sample</b><small>Tested in store</small></span></label>
               </div>
-            </aside>
-          </form>
+              <p class="book__label" id="srcLabel">Where does your water come from?</p>
+              <div class="pick-row" role="radiogroup" aria-labelledby="srcLabel">
+                <label class="pick"><input type="radio" name="source" value="city" checked><span>City / municipal</span></label>
+                <label class="pick"><input type="radio" name="source" value="well"><span>Private well</span></label>
+                <label class="pick"><input type="radio" name="source" value="unsure"><span>Not sure</span></label>
+              </div>
+            </fieldset>
 
-          <div class="book__done" id="bookDone" hidden tabindex="-1">
-            <div class="book__check" aria-hidden="true">✓</div>
-            <h3>Your request is ready to send</h3>
-            <p>We opened your email app with everything filled in. Just press <b>Send</b>. The store will contact you to confirm your appointment.</p>
-            <dl class="book__summary" id="bookSummary"></dl>
-            <div class="book__actions">
-              <a class="btn btn--sun btn--lg" id="bookSend" href="#">Open email again</a>
-              <a class="btn btn--ghost btn--lg" href="tel:9056938820">Call to book instead</a>
-              <button type="button" class="btn btn--ghost btn--lg" id="bookCopy">Copy details</button>
+            <fieldset class="book__step" data-step="2">
+              <legend>What's bothering you about your water?</legend>
+              <p class="book__hint">Pick all that apply.</p>
+              <div class="pick-row pick-row--4">
+                <label class="pick"><input type="checkbox" name="concern" value="hard"><span><i aria-hidden="true">🧂</i>Scale & hard water</span></label>
+                <label class="pick"><input type="checkbox" name="concern" value="iron"><span><i aria-hidden="true">🟠</i>Orange stains (iron)</span></label>
+                <label class="pick"><input type="checkbox" name="concern" value="sulphur"><span><i aria-hidden="true">🥚</i>Rotten-egg smell</span></label>
+                <label class="pick"><input type="checkbox" name="concern" value="chlorine"><span><i aria-hidden="true">🏊</i>Chlorine taste or smell</span></label>
+                <label class="pick"><input type="checkbox" name="concern" value="bacteria"><span><i aria-hidden="true">🦠</i>Bacteria / well safety</span></label>
+                <label class="pick"><input type="checkbox" name="concern" value="tannins"><span><i aria-hidden="true">🍂</i>Brown or tea-coloured water</span></label>
+                <label class="pick"><input type="checkbox" name="concern" value="drinking"><span><i aria-hidden="true">💧</i>Better drinking water</span></label>
+                <label class="pick"><input type="checkbox" name="concern" value="unsure"><span><i aria-hidden="true">🧪</i>Not sure, just test it</span></label>
+              </div>
+              <label class="field"><span>Anything else we should know? <span class="opt">(optional)</span></span>
+                <textarea name="notes" rows="3" placeholder="e.g. new house, stains in the toilet, baby on the way…"></textarea>
+              </label>
+              <p class="book__error" data-error="2" role="alert" hidden>Pick at least one, or choose “Not sure, just test it”.</p>
+            </fieldset>
+
+            <fieldset class="book__step" data-step="3">
+              <legend id="whenLegend">When works for you?</legend>
+              <div class="book__dates" id="bookDates" role="radiogroup" aria-labelledby="whenLegend"></div>
+              <div class="book__datemore">
+                <label class="field field--inline">Or pick another date <input type="date" name="dateOther" id="bookDateOther"></label>
+              </div>
+              <p class="book__label" id="timeLabel">Preferred time</p>
+              <div class="pick-row pick-row--3" id="bookTimes" role="radiogroup" aria-labelledby="timeLabel"></div>
+              <p class="book__hint" id="bookTimeNote"></p>
+              <p class="book__error" data-error="3" role="alert" hidden>Choose a date and a time window.</p>
+            </fieldset>
+
+            <fieldset class="book__step" data-step="4">
+              <legend>How do we reach you?</legend>
+              <div class="field-grid">
+                <label class="field">Full name<input name="name" autocomplete="name" required></label>
+                <label class="field">Phone<input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="905-555-0123" required></label>
+                <label class="field"><span>Email <span class="opt">(optional)</span></span><input name="email" type="email" autocomplete="email"></label>
+                <label class="field">Best way to reach you
+                  <select name="contact"><option value="phone">Phone call</option><option value="text">Text message</option><option value="email">Email</option></select>
+                </label>
+                <label class="field field--wide" id="addrField">Address of the visit<input name="address" autocomplete="street-address" placeholder="Street address"></label>
+                <label class="field" id="townField">Town<input name="town" autocomplete="address-level2" value="Milton"></label>
+              </div>
+              <p class="book__error" data-error="4" role="alert" hidden>Please fill in the highlighted fields.</p>
+            </fieldset>
+
+            <div class="book__review" id="bookReview" hidden tabindex="-1">
+              <div class="book__check" aria-hidden="true">✓</div>
+              <h3>Almost done. Send your request.</h3>
+              <p>Your email app will open with this request ready to send to the store. The store will contact you to confirm your appointment.</p>
+              <dl class="book__summary" id="bookSummary"></dl>
+              <div class="book__actions">
+                <a class="btn btn--sun btn--lg" id="bookSend" href="#">Send request by email</a>
+                <a class="btn btn--ghost btn--lg" href="tel:9056938820">Call to book instead</a>
+                <button type="button" class="btn btn--ghost btn--lg" id="bookCopy">Copy details</button>
+              </div>
+              <p class="book__ref">Reference <b id="bookRef"></b> · <button type="button" class="link-btn" id="bookEdit">Edit my answers</button></p>
             </div>
-            <p class="book__ref">Reference <b id="bookRef"></b> · <button type="button" class="link-btn" id="bookEdit">Edit my answers</button></p>
-          </div>
+
+            <div class="book__nav" id="bookNav">
+              <button type="button" class="btn btn--ghost" id="bookBack" hidden>← Back</button>
+              <span class="book__stepcount" id="bookCount">Step 1 of 4</span>
+              <button type="button" class="btn btn--blue" id="bookNext">Next →</button>
+            </div>
+          </form>
         </div>
       </div>
     </section>
@@ -724,6 +722,6 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.3.2 2.5.57 3.6a1 1 0 0 1-.25 1z"/></svg>
   </a>
 
-  <script src="script.js?v=8"></script>
+  <script src="script.js?v=7"></script>
 </body>
 </html>
